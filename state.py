@@ -12,3 +12,4 @@ class AgentState(TypedDict):
     memory: list[dict]
     session_history: list[dict]
     project_context: Optional[str]
+    force_route: Optional[str]

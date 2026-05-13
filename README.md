@@ -67,6 +67,11 @@ ANTHROPIC_API_KEY=sk-ant-...   # optional — only needed for CLAUDE node
 # One-shot task
 ./run "explain how bubble sort works"
 
+# Force a specific agent (skip orchestrator)
+./run --route CODER "build a login page"
+./run --route CLAUDE "design a scalable auth system"
+./run --route RESEARCHER "compare React vs Vue in 2026"
+
 # REPL (multi-turn session)
 ./run
 
@@ -82,6 +87,10 @@ ANTHROPIC_API_KEY=sk-ant-...   # optional — only needed for CLAUDE node
 # Today's token usage
 ./run --stats
 ```
+
+### Routing
+
+Short tasks (<150 chars) with no multi-hop keywords are fast-routed without calling the orchestrator LLM — eliminating 10-15s of latency. Complex code tasks are auto-escalated from CODER to CLAUDE. Use `--route` to override.
 
 ## Project Structure
 

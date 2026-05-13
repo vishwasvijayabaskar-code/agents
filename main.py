@@ -92,7 +92,7 @@ def notify(message: str):
     except Exception:
         pass
 
-def run(task: str, session_history: list[dict] = None, project_path: str = None, notify_done: bool = False):
+def run(task: str, session_history: list[dict] = None, project_path: str = None, notify_done: bool = False, force_route: str = None):
     # Input validation
     if len(task) > MAX_TASK_CHARS:
         console.print(f"[bold yellow]Task truncated from {len(task)} to {MAX_TASK_CHARS} chars[/bold yellow]")
@@ -120,6 +120,7 @@ def run(task: str, session_history: list[dict] = None, project_path: str = None,
         "memory": [],
         "session_history": session_history or [],
         "project_context": project_ctx,
+        "force_route": force_route,
     }
 
     print_task_header(task)
@@ -195,6 +196,7 @@ if __name__ == "__main__":
     parser.add_argument("--project", "-p", help="Path to project for codebase context")
     parser.add_argument("--resume", "-r", help="Resume a saved session by ID")
     parser.add_argument("--notify", "-n", action="store_true", help="macOS notification on completion")
+    parser.add_argument("--route", help="Force route to agent: CODER, RESEARCHER, FAST, CLAUDE, CODEX, EXECUTOR")
     parser.add_argument("--stats", "-s", action="store_true", help="Show today's token usage")
     args = parser.parse_args()
 
@@ -204,7 +206,16 @@ if __name__ == "__main__":
 
     check_ollama_health()
 
+    # Validate --route if provided
+    force_route = None
+    if args.route:
+        force_route = args.route.upper()
+        valid_routes = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR"}
+        if force_route not in valid_routes:
+            console.print(f"[bold red]Invalid route: {args.route}. Valid: {', '.join(sorted(valid_routes))}[/bold red]")
+            sys.exit(1)
+
     if args.task:
-        run(" ".join(args.task), project_path=args.project, notify_done=args.notify)
+        run(" ".join(args.task), project_path=args.project, notify_done=args.notify, force_route=force_route)
     else:
         repl(project_path=args.project, session_id=args.resume, notify_done=args.notify)
