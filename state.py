@@ -13,3 +13,5 @@ class AgentState(TypedDict):
     session_history: list[dict]
     project_context: Optional[str]
     force_route: Optional[str]
+    chat_messages: list[dict]
+    fanout_tasks: Optional[dict]

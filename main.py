@@ -18,14 +18,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from graph import build_graph
-from helpers import _load_project_context, _embed_memory
+from helpers import _load_project_context, _embed_memory, cfg
 from ui import console, print_task_header, print_separator, print_agents_used, print_files, show_stats_table
 
 OUTPUT_BASE = Path(__file__).parent / "output"
 SESSIONS_DIR = Path(__file__).parent / "sessions"
 USAGE_FILE = Path(__file__).parent / "usage.jsonl"
 
-MAX_TASK_CHARS = 10_000
+MAX_TASK_CHARS = cfg.get("limits", "max_task_chars", 10_000)
 
 def check_ollama_health():
     """Check if Ollama is running and required models are available."""
@@ -41,7 +41,6 @@ def check_ollama_health():
             model = os.getenv(env, "")
             if model.startswith("ollama/"):
                 model_name = model.replace("ollama/", "")
-                # Check both exact and with :latest suffix
                 if model_name not in available and f"{model_name}:latest" not in available:
                     missing.append(model_name)
         if missing:
@@ -81,7 +80,7 @@ def save_session(session_id: str, session_history: list[dict]):
 def load_session(session_id: str) -> list[dict]:
     path = SESSIONS_DIR / f"{session_id}.pkl"
     if not path.exists():
-        print(f"Session '{session_id}' not found.")
+        console.print(f"[bold yellow]Session '{session_id}' not found.[/bold yellow]")
         return []
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -92,7 +91,14 @@ def notify(message: str):
     except Exception:
         pass
 
-def run(task: str, session_history: list[dict] = None, project_path: str = None, notify_done: bool = False, force_route: str = None):
+def run(
+    task: str,
+    session_history: list[dict] = None,
+    project_path: str = None,
+    notify_done: bool = False,
+    force_route: str = None,
+    chat_messages: list[dict] = None,
+):
     # Input validation
     if len(task) > MAX_TASK_CHARS:
         console.print(f"[bold yellow]Task truncated from {len(task)} to {MAX_TASK_CHARS} chars[/bold yellow]")
@@ -121,6 +127,7 @@ def run(task: str, session_history: list[dict] = None, project_path: str = None,
         "session_history": session_history or [],
         "project_context": project_ctx,
         "force_route": force_route,
+        "chat_messages": chat_messages or [],
     }
 
     print_task_header(task)
@@ -142,53 +149,126 @@ def run(task: str, session_history: list[dict] = None, project_path: str = None,
 
     return result
 
+
+def chat_mode(
+    initial_task: str,
+    session_history: list[dict] = None,
+    project_path: str = None,
+    force_route: str = None,
+):
+    """Multi-turn conversation with a single agent. /done to exit."""
+    console.print("[info]Chat mode — follow-ups stay with same agent. '/done' to exit.[/info]")
+    messages = []  # conversation history: [{"role": "user"|"assistant", "content": "..."}]
+
+    task = initial_task
+    while True:
+        result = run(
+            task,
+            session_history=session_history,
+            project_path=project_path,
+            force_route=force_route,
+            chat_messages=messages,
+        )
+        assistant_reply = result.get("result") or ""
+        # Append turn to messages history
+        messages.append({"role": "user", "content": task})
+        messages.append({"role": "assistant", "content": assistant_reply})
+
+        try:
+            follow_up = input("\n[chat]>>> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            console.print("\n[info]Chat ended.[/info]")
+            break
+        if not follow_up or follow_up.lower() in ("/done", "exit", "quit"):
+            console.print("[info]Chat ended.[/info]")
+            break
+        task = follow_up
+
+    return messages
+
+
 def repl(project_path: str = None, session_id: str = None, notify_done: bool = False):
     if session_id:
         session_history = load_session(session_id)
-        print(f"Resumed session '{session_id}' ({len(session_history)} past tasks)")
+        console.print(f"[info]Resumed session '{session_id}' ({len(session_history)} past tasks)[/info]")
     else:
         session_history = []
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    print("Agent REPL — 'exit' to quit, 'history' for past tasks, 'save' to save session")
+    console.print("[info]Agent REPL — commands: exit, history, save, stats, models, /model <node> <model>, /chat[/info]")
     if project_path:
-        print(f"Project: {project_path}")
-    print("─" * 50)
+        console.print(f"[info]Project: {project_path}[/info]")
+    console.rule(style="separator")
 
     while True:
         try:
             task = input("\n>>> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nExiting.")
+            console.print("\n[info]Exiting.[/info]")
             save_session(session_id, session_history)
             break
 
         if not task:
             continue
+
+        # Built-in commands
         if task.lower() in ("exit", "quit", "q"):
             save_session(session_id, session_history)
-            print(f"Session saved: {session_id}")
+            console.print(f"[info]Session saved: {session_id}[/info]")
             break
+
         if task.lower() == "history":
             if not session_history:
-                print("No tasks this session.")
+                console.print("[info]No tasks this session.[/info]")
             for i, h in enumerate(session_history):
-                print(f"{i+1}. [{' → '.join(h['agents'])}] {h['task']}")
+                console.print(f"[info]{i+1}. [{' → '.join(h['agents'])}] {h['task']}[/info]")
             continue
+
         if task.lower() == "save":
             save_session(session_id, session_history)
-            print(f"Saved: {session_id}")
+            console.print(f"[info]Saved: {session_id}[/info]")
             continue
+
         if task.lower() == "stats":
             show_stats()
+            continue
+
+        # Model listing: /models or models
+        if task.lower() in ("models", "/models"):
+            for node, model in cfg.list_models().items():
+                console.print(f"[info]  {node:15} {model}[/info]")
+            continue
+
+        # Model hot-swap: /model <node> <model>
+        if task.lower().startswith("/model "):
+            parts = task.split(None, 2)
+            if len(parts) != 3:
+                console.print("[bold yellow]Usage: /model <node> <model>  e.g. /model coder ollama/deepseek-coder-v2:33b[/bold yellow]")
+            else:
+                node, model = parts[1].lower(), parts[2]
+                valid_nodes = set(cfg.list_models().keys())
+                if node not in valid_nodes:
+                    console.print(f"[bold yellow]Unknown node '{node}'. Valid: {', '.join(sorted(valid_nodes))}[/bold yellow]")
+                else:
+                    cfg.set_model(node, model)
+                    console.print(f"[info]{node} → {model}[/info]")
+            continue
+
+        # Chat mode: /chat [task]
+        if task.lower().startswith("/chat"):
+            remainder = task[5:].strip()
+            initial = remainder or input("First message: ").strip()
+            if initial:
+                chat_mode(initial, session_history=session_history, project_path=project_path)
             continue
 
         result = run(task, session_history=session_history, project_path=project_path, notify_done=notify_done)
         session_history.append({
             "task": task,
-            "result": (result.get("result") or "")[:3000],
+            "result": (result.get("result") or "")[:cfg.get("limits", "session_result_chars", 3000)],
             "agents": list(result.get("agent_outputs", {}).keys()),
         })
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Multi-agent AI system")
@@ -197,6 +277,7 @@ if __name__ == "__main__":
     parser.add_argument("--resume", "-r", help="Resume a saved session by ID")
     parser.add_argument("--notify", "-n", action="store_true", help="macOS notification on completion")
     parser.add_argument("--route", help="Force route to agent: CODER, RESEARCHER, FAST, CLAUDE, CODEX, EXECUTOR")
+    parser.add_argument("--chat", action="store_true", help="Multi-turn chat mode with same agent")
     parser.add_argument("--stats", "-s", action="store_true", help="Show today's token usage")
     args = parser.parse_args()
 
@@ -216,6 +297,10 @@ if __name__ == "__main__":
             sys.exit(1)
 
     if args.task:
-        run(" ".join(args.task), project_path=args.project, notify_done=args.notify, force_route=force_route)
+        task = " ".join(args.task)
+        if args.chat:
+            chat_mode(task, project_path=args.project, force_route=force_route)
+        else:
+            run(task, project_path=args.project, notify_done=args.notify, force_route=force_route)
     else:
         repl(project_path=args.project, session_id=args.resume, notify_done=args.notify)

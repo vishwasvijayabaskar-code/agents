@@ -1,13 +1,13 @@
-import os
 from state import AgentState
 from helpers.llm import _call_stream
 from helpers.files import _write_files
 from helpers.session import _session_ctx
+from helpers.config import cfg
 from ui import console, print_agent_header
 
 def coder(state: AgentState) -> AgentState:
     try:
-        model = os.getenv("CODER_MODEL", "ollama/llama3.2")
+        model = cfg.model("coder")
 
         context = _session_ctx(state)
         if state.get("project_context"):
@@ -17,7 +17,8 @@ def coder(state: AgentState) -> AgentState:
 
         system = "You are an expert software engineer. Write clean, production-quality code. Always prefix each code block with its filename like **app.py** or **styles.css** on its own line. CRITICAL: If session context or project_files describe existing code or a project already built, you MUST extend/modify that exact project — do NOT start fresh, do NOT switch languages or frameworks, do NOT invent a new stack."
         print_agent_header("CODER", model)
-        result = _call_stream(model, system, state["task"] + context, agent="CODER")
+        chat_msgs = state.get("chat_messages") or None
+        result = _call_stream(model, system, state["task"] + context, agent="CODER", messages=chat_msgs)
 
         if state.get("output_dir"):
             written = _write_files(result, state["output_dir"])

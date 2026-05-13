@@ -4,6 +4,7 @@ import json
 from state import AgentState
 from helpers.llm import _call
 from helpers.memory import _relevant_memory
+from helpers.plugins import get_plugin_routes, get_plugin_descriptions
 
 # --- Fast-path routing heuristics ---
 
@@ -98,23 +99,24 @@ def orchestrator(state: AgentState) -> AgentState:
         session_ctx = "\nThis session: " + "; ".join([h["task"] for h in state["session_history"][-3:]])
         memory_ctx += session_ctx
 
-    system = """You are a task orchestrator. Decide what to do next.
+    plugin_info = get_plugin_descriptions()
+    system = f"""You are a task orchestrator. Decide what to do next.
 
 Output ONLY valid JSON. No explanation. No markdown.
 Examples:
-{"route": "CODER", "done": false}
-{"route": "RESEARCHER", "done": false}
-{"route": "FAST", "done": false}
-{"route": "CODEX", "done": false}
-{"route": "CLAUDE", "done": false}
-{"route": null, "done": true}
+{{"route": "CODER", "done": false}}
+{{"route": "RESEARCHER", "done": false}}
+{{"route": "FAST", "done": false}}
+{{"route": "CODEX", "done": false}}
+{{"route": "CLAUDE", "done": false}}
+{{"route": null, "done": true}}
 
 CODER: code generation, web design, HTML/CSS/JS/Python snippets
 CODEX: autonomous coding tasks that require file creation, refactoring whole projects, multi-file builds
 RESEARCHER: research, analysis, planning, science, strategy (uses web search)
 FAST: summaries, simple questions, quick answers
 CLAUDE: complex reasoning, writing, essays, multi-step analysis, anything needing deep thought. Also: large code tasks, architecture, production-grade systems.
-EXECUTOR: run/test the code that CODER just wrote (use AFTER CODER when user says "run it", "test it", "execute it", "verify it works")
+EXECUTOR: run/test the code that CODER just wrote (use AFTER CODER when user says "run it", "test it", "execute it", "verify it works"){plugin_info}
 
 Rules:
 - If a previous agent already answered the task well, set done=true
@@ -159,17 +161,24 @@ Rules:
     return state
 
 
+_BUILTIN_WORKERS = {"CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR"}
+
+def _worker_nodes() -> set[str]:
+    return _BUILTIN_WORKERS | set(get_plugin_routes())
+
+
 def route_decision(state: AgentState) -> str:
+    agent_outputs = state.get("agent_outputs") or {}
+    route = state.get("route")
+    workers = _worker_nodes()
+
     # Hard stop: done flag or iteration cap
     if state.get("done") or state.get("iterations", 0) >= 3:
-        return "__end__"
-
-    route = state.get("route")
-    agent_outputs = state.get("agent_outputs") or {}
+        return _maybe_synthesize(agent_outputs, workers)
 
     # Hard-coded guard: never re-run an agent that already produced output
     if route in agent_outputs:
-        return "__end__"
+        return _maybe_synthesize(agent_outputs, workers)
 
     # CODEX only fires for explicit "build entire app / refactor project" signals
     if route == "CODEX":
@@ -178,11 +187,19 @@ def route_decision(state: AgentState) -> str:
         if not any(s in task for s in codex_signals):
             # Demote to CODER (return directly, don't mutate state)
             if "CODER" in agent_outputs:
-                return "__end__"
+                return _maybe_synthesize(agent_outputs, workers)
             return "CODER"
         if "CODER" in agent_outputs:
-            return "__end__"
+            return _maybe_synthesize(agent_outputs, workers)
 
-    if route in ("CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR"):
+    if route in workers:
         return route
+    return _maybe_synthesize(agent_outputs, workers)
+
+
+def _maybe_synthesize(agent_outputs: dict, workers: set) -> str:
+    """Route to SYNTHESIZE if multiple workers ran and haven't been merged yet."""
+    worker_ran = [k for k in agent_outputs if k in workers]
+    if len(worker_ran) > 1 and "SYNTHESIZE" not in agent_outputs:
+        return "SYNTHESIZE"
     return "__end__"

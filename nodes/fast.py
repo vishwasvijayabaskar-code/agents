@@ -1,15 +1,16 @@
-import os
 from state import AgentState
 from helpers.llm import _call_stream
 from helpers.session import _session_ctx
+from helpers.config import cfg
 from ui import console, print_agent_header
 
 def fast(state: AgentState) -> AgentState:
     try:
-        model = os.getenv("FAST_MODEL", "ollama/llama3.2")
+        model = cfg.model("fast")
         system = "You are a fast, concise assistant. Give short, direct answers."
         print_agent_header("FAST", model)
-        result = _call_stream(model, system, state["task"] + _session_ctx(state), agent="FAST")
+        chat_msgs = state.get("chat_messages") or None
+        result = _call_stream(model, system, state["task"] + _session_ctx(state), agent="FAST", messages=chat_msgs)
 
         if not state.get("agent_outputs"):
             state["agent_outputs"] = {}

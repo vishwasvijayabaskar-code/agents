@@ -1,20 +1,60 @@
 import os
+import re
 from state import AgentState
 from helpers.llm import _call_stream
-from helpers.search import _search
+from helpers.search import _search, _format_search_results, _fetch_page
 from helpers.session import _session_ctx
+from helpers.config import cfg
 from ui import console, print_agent_header
+
+
+def _pick_urls_to_fetch(results: list[dict], task: str, max_fetch: int) -> list[str]:
+    """Pick top-N URLs from results most relevant to task."""
+    if not results or max_fetch == 0:
+        return []
+    task_words = set(re.findall(r'\w+', task.lower()))
+    scored = []
+    for r in results:
+        title_words = set(re.findall(r'\w+', (r.get('title') or '').lower()))
+        score = len(title_words & task_words)
+        url = r.get('href') or r.get('url') or ''
+        if url and url.startswith('http'):
+            scored.append((score, url))
+    scored.sort(reverse=True)
+    return [url for _, url in scored[:max_fetch]]
+
 
 def researcher(state: AgentState) -> AgentState:
     try:
-        model = os.getenv("RESEARCHER_MODEL", "ollama/llama3.2")
+        model = cfg.model("researcher")
+        max_results = cfg.get("researcher", "max_search_results", 5)
+        max_fetches = cfg.get("researcher", "max_page_fetches", 2)
+        max_page_chars = cfg.get("researcher", "max_page_chars", 5000)
 
         console.print("[info]Searching web...[/info]")
-        search_results = _search(state["task"])
+        results = _search(state["task"], max_results=max_results)
+        search_text = _format_search_results(results)
 
-        system = "You are a deep research and analysis expert. Think step by step. Use the web search results as grounding. Give structured, detailed output."
+        # Optionally fetch full page content for top URLs
+        page_content = ""
+        if max_fetches > 0 and results:
+            urls = _pick_urls_to_fetch(results, state["task"], max_fetches)
+            fetched = []
+            for url in urls:
+                console.print(f"[info]Fetching {url[:60]}...[/info]")
+                content = _fetch_page(url, max_chars=max_page_chars)
+                if not content.startswith("["):  # not an error
+                    fetched.append(f"--- {url} ---\n{content}")
+            if fetched:
+                page_content = "\n\nFull page content:\n" + "\n\n".join(fetched)
+
+        system = "You are a deep research and analysis expert. Think step by step. Use the web search results and page content as grounding. Give structured, detailed output."
         proj = f"\n\n{state['project_context']}" if state.get("project_context") else ""
-        user = f"Task: {state['task']}{_session_ctx(state)}{proj}\n\nWeb search results:\n{search_results}"
+        user = (
+            f"Task: {state['task']}{_session_ctx(state)}{proj}"
+            f"\n\nWeb search results:\n{search_text}"
+            f"{page_content}"
+        )
         print_agent_header("RESEARCHER", model)
         result = _call_stream(model, system, user, agent="RESEARCHER")
 

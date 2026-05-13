@@ -1,0 +1,30 @@
+models:
+  orchestrator: ollama/qwen3:32b
+  coder: ollama/qwen2.5-coder:32b
+  researcher: ollama/deepseek-r1:14b
+  fast: ollama/qwen2.5:7b
+  claude: claude-sonnet-4-6
+
+limits:
+  max_iterations: 3
+  max_task_chars: 10000
+  session_result_chars: 3000
+  project_max_bytes: 150000
+
+executor:
+  enabled: true
+  timeout: 60
+  blocked_patterns:
+    - "rm -rf"
+    - "rm -r"
+    - "sudo"
+    - "mkfs"
+    - "dd if="
+    - "chmod 777"
+    - "shutdown"
+    - "reboot"
+
+researcher:
+  max_search_results: 5
+  max_page_fetches: 2
+  max_page_chars: 5000
