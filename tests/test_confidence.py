@@ -98,6 +98,22 @@ class TestConfidenceEscalationIntegration:
         new_escalations = [h for h in new_entries if "confidence escalation" in h]
         assert len(new_escalations) == 0
 
+    def test_fast_pathed_task_skips_confidence_scoring(self):
+        """Fast-pathed tasks shouldn't waste time on confidence scoring."""
+        state = make_state(
+            task="hello",
+            iterations=1,
+            agent_outputs={"FAST": "Hi there!"},
+            history=["Orchestrator → fast-path route=FAST"],
+        )
+        with patch("nodes.orchestrator._score_output") as mock_score, \
+             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
+             patch("nodes.orchestrator._relevant_memory", return_value=""):
+            orchestrator(state)
+
+        # _score_output should NOT have been called
+        mock_score.assert_not_called()
+
     def test_escalation_skipped_if_target_already_ran(self):
         """FAST score=2 but CODER already ran → skip escalation."""
         state = make_state(

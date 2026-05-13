@@ -111,10 +111,12 @@ def orchestrator(state: AgentState) -> AgentState:
 
     # Confidence routing: if exactly 1 worker ran and no prior escalation,
     # score the output and escalate to a stronger model if quality is low (< 5).
+    # Skip if task was fast-pathed — trivial tasks don't need quality scoring.
+    was_fast_pathed = any("fast-path" in h for h in (state.get("history") or []))
     agent_outputs_now = state.get("agent_outputs") or {}
     workers_now = _worker_nodes()
     workers_ran = [k for k in agent_outputs_now if k in workers_now]
-    if len(workers_ran) == 1 and not _confidence_escalation_done(state):
+    if len(workers_ran) == 1 and not _confidence_escalation_done(state) and not was_fast_pathed:
         last_agent = workers_ran[0]
         last_output = agent_outputs_now[last_agent]
         if last_agent in _CONFIDENCE_CHAIN:

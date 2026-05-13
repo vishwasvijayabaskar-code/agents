@@ -233,6 +233,20 @@ def repl(project_path: str = None, session_id: str = None, notify_done: bool = F
             show_stats()
             continue
 
+        # Memory search: memory <query>
+        if task.lower().startswith("memory "):
+            query = task[7:].strip()
+            if query:
+                from helpers.memory import _relevant_memory
+                results = _relevant_memory(query)
+                if results:
+                    console.print(f"[info]{results}[/info]")
+                else:
+                    console.print("[info]No matching memories found.[/info]")
+            else:
+                console.print("[bold yellow]Usage: memory <query>[/bold yellow]")
+            continue
+
         # Model listing: /models or models
         if task.lower() in ("models", "/models"):
             for node, model in cfg.list_models().items():
