@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}agents — run{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form id="task-form">
+    <div class="form-group">
+      <label for="task">Task</label>
+      <textarea id="task" name="task" placeholder="Ask anything — code, research, write, analyze…" rows="3" autofocus></textarea>
+    </div>
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="form-group" style="flex:1; min-width:160px; margin:0;">
+        <label for="route">Route (optional)</label>
+        <select id="route" name="route">
+          <option value="">Auto (orchestrator)</option>
+          <option value="FAST">FAST — quick answers</option>
+          <option value="CODER">CODER — code generation</option>
+          <option value="RESEARCHER">RESEARCHER — web search</option>
+          <option value="CLAUDE">CLAUDE — deep reasoning</option>
+          <option value="CODEX">CODEX — multi-file builds</option>
+          <option value="EXECUTOR">EXECUTOR — run code</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" id="run-btn">
+        ▶ Run
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="status" id="status">
+  <div class="spinner" id="spinner"></div>
+  <span id="status-text"></span>
+</div>
+
+<div id="output" class="empty">Output will appear here…</div>
+
+<div id="agents-used" style="margin-top:10px; display:none;">
+  <span class="muted" style="font-size:12px;">Agents used: </span>
+  <span id="agents-list"></span>
+</div>
+
+<script>
+(function() {
+  const form = document.getElementById('task-form');
+  const output = document.getElementById('output');
+  const spinner = document.getElementById('spinner');
+  const statusText = document.getElementById('status-text');
+  const runBtn = document.getElementById('run-btn');
+  const agentsUsed = document.getElementById('agents-used');
+  const agentsList = document.getElementById('agents-list');
+
+  let es = null;
+
+  function setRunning(on) {
+    runBtn.disabled = on;
+    spinner.classList.toggle('active', on);
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Keyboard shortcut: Cmd/Ctrl+Enter to submit
+  document.getElementById('task').addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      form.dispatchEvent(new Event('submit', {cancelable: true}));
+    }
+  });
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const task = document.getElementById('task').value.trim();
+    const route = document.getElementById('route').value;
+    if (!task) return;
+
+    if (es) { es.close(); es = null; }
+
+    output.classList.remove('empty');
+    output.textContent = '';
+    agentsUsed.style.display = 'none';
+    agentsList.innerHTML = '';
+    setRunning(true);
+    statusText.textContent = 'Running…';
+
+    const body = new FormData();
+    body.append('task', task);
+    body.append('route', route);
+
+    // Use fetch + ReadableStream for SSE (works better than EventSource with POST)
+    fetch('/run', { method: 'POST', body })
+      .then(res => {
+        if (!res.ok) { throw new Error('HTTP ' + res.status); }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        function processChunk() {
+          reader.read().then(({done, value}) => {
+            if (done) {
+              setRunning(false);
+              statusText.textContent = '';
+              return;
+            }
+            buffer += decoder.decode(value, {stream: true});
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                // event type (handled below)
+              } else if (line.startsWith('data: ')) {
+                const raw = line.slice(6).trim();
+                if (!raw || raw === '{}') continue;
+                try {
+                  const payload = JSON.parse(raw);
+                  if (payload.result !== undefined) {
+                    output.textContent = payload.result;
+                    output.scrollTop = output.scrollHeight;
+                  }
+                  if (payload.agents && payload.agents.length) {
+                    agentsUsed.style.display = 'block';
+                    agentsList.innerHTML = payload.agents
+                      .map(a => `<span class="badge badge-blue">${escapeHtml(a)}</span>`)
+                      .join(' ');
+                  }
+                  if (payload.error) {
+                    output.innerHTML = '<span class="error-text">Error: ' + escapeHtml(payload.error) + '</span>';
+                  }
+                } catch (_) {}
+              }
+            }
+            processChunk();
+          });
+        }
+        processChunk();
+      })
+      .catch(err => {
+        output.innerHTML = '<span class="error-text">Request failed: ' + escapeHtml(err.message) + '</span>';
+        setRunning(false);
+        statusText.textContent = '';
+      });
+  });
+})();
+</script>
+{% endblock %}

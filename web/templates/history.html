@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}agents — history{% endblock %}
+
+{% block content %}
+<h2>Session History</h2>
+
+{% if not sessions %}
+<div class="card">
+  <p class="muted">No saved sessions yet. Run some tasks first.</p>
+</div>
+{% else %}
+{% for session in sessions %}
+<div class="card" style="margin-bottom:12px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span class="mono" style="font-size:12px; color:var(--muted);">{{ session.id }}</span>
+    <span class="badge badge-blue">{{ session.tasks | length }} task{{ 's' if session.tasks | length != 1 }}</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Task</th>
+        <th>Agents</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in session.tasks %}
+      <tr>
+        <td class="muted" style="width:36px;">{{ loop.index }}</td>
+        <td style="max-width:500px;">
+          <div style="font-weight:500;">{{ item.task[:120] }}{% if item.task | length > 120 %}…{% endif %}</div>
+          {% if item.result %}
+          <details style="margin-top:6px;">
+            <summary style="font-size:12px; color:var(--muted); cursor:pointer;">Show result</summary>
+            <pre style="font-size:12px; color:var(--muted); white-space:pre-wrap; margin-top:8px; max-height:200px; overflow-y:auto;">{{ item.result[:2000] }}{% if item.result | length > 2000 %}…{% endif %}</pre>
+          </details>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          {% for agent in item.agents %}
+          <span class="badge badge-green">{{ agent }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

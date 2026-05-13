@@ -166,6 +166,20 @@ def register():
 
 The orchestrator LLM automatically learns the plugin description and can route to it.
 
+## Web UI
+
+Browser interface with streaming task output, session history, and token usage charts.
+
+```bash
+python3 web.py              # http://localhost:8000
+python3 web.py --reload     # dev mode
+python3 web.py --port 9000  # custom port
+```
+
+Pages: `/` (run tasks), `/history` (all sessions), `/stats` (token usage charts).
+
+Keyboard shortcut: `Cmd/Ctrl+Enter` to submit a task.
+
 ## MCP Server
 
 Expose agents as an MCP tool server for Claude Desktop or other MCP clients:
@@ -235,6 +249,10 @@ agents/
 │   └── test_search.py
 ├── config.yaml          # Non-secret settings (models, limits, executor, researcher)
 ├── mcp_server.py        # FastMCP server — run_task, search_memory, etc.
+├── web.py               # Web UI launcher (python3 web.py)
+├── web/
+│   ├── app.py           # FastAPI app + SSE task runner
+│   └── templates/       # Jinja2 HTML (base, index, history, stats)
 ├── graph.py             # LangGraph StateGraph wiring + plugin node registration
 ├── main.py              # Entry point, REPL, CLI, chat mode
 ├── state.py             # Shared AgentState TypedDict
