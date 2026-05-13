@@ -5,11 +5,11 @@ import fnmatch
 from pathlib import Path
 from litellm import completion
 from state import AgentState
-from ui import console, print_agent_header, stream_tokens
+from ui import console, print_agent_header
 
 BASE = "http://localhost:11434"
 
-_USAGE_FILE = Path.home() / "agents" / "usage.jsonl"
+_USAGE_FILE = Path(__file__).parent / "usage.jsonl"
 
 def _log_usage(agent: str, model: str, prompt_tokens: int, completion_tokens: int):
     import json as _json
@@ -28,7 +28,7 @@ def _log_usage(agent: str, model: str, prompt_tokens: int, completion_tokens: in
     except Exception:
         pass
 
-_CHROMA_DIR = str(Path.home() / "agents" / "chroma")
+_CHROMA_DIR = str(Path(__file__).parent / "chroma")
 _chroma_client = None
 _chroma_collection = None
 
@@ -154,18 +154,25 @@ def _call(model: str, system: str, user: str, agent: str = "ORCHESTRATOR") -> st
 def _call_stream(model: str, system: str, user: str, agent: str = "WORKER") -> str:
     """Stream tokens with rich display, return full text."""
     full_text = ""
-    total_p = len(system.split()) + len(user.split())  # approx prompt tokens
+    usage = None
     for chunk in completion(
         model=model,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         api_base=BASE,
         stream=True,
+        stream_options={"include_usage": True},
     ):
         delta = chunk.choices[0].delta.content or ""
         console.print(delta, end="", markup=False)
         full_text += delta
+        if hasattr(chunk, 'usage') and chunk.usage:
+            usage = chunk.usage
     console.print()
-    _log_usage(agent, model, total_p, len(full_text.split()))
+    if usage:
+        _log_usage(agent, model, usage.prompt_tokens or 0, usage.completion_tokens or 0)
+    else:
+        # Fallback: approximate if provider doesn't support stream usage
+        _log_usage(agent, model, len(system.split()) + len(user.split()), len(full_text.split()))
     return full_text
 
 def _search(query: str) -> str:
@@ -269,6 +276,8 @@ Rules:
     user = f"Task: {state['task']}\nIterations: {state['iterations']}{memory_ctx}{prev_outputs}"
 
     raw = _call(model, system, user).strip()
+    # Strip qwen3 chain-of-thought tags before JSON extraction
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
 
     try:
         json_match = re.search(r'\{[^{}]*\}', raw, re.DOTALL)
@@ -392,7 +401,7 @@ def executor(state: AgentState) -> AgentState:
         state["history"].append("Executor: no commands found")
         return state
 
-    work_dir = state.get("output_dir") or str(Path.home() / "agents" / "output")
+    work_dir = state.get("output_dir") or str(Path(__file__).parent / "output")
     all_results = []
     for cmd in run_tags:
         cmd = cmd.strip()
@@ -438,7 +447,7 @@ def codex(state: AgentState) -> AgentState:
     import subprocess
     from pathlib import Path
 
-    work_dir = state.get("output_dir") or str(Path.home() / "agents" / "output" / "codex")
+    work_dir = state.get("output_dir") or str(Path(__file__).parent / "output" / "codex")
     Path(work_dir).mkdir(parents=True, exist_ok=True)
 
     context = ""
@@ -498,9 +507,9 @@ def claude(state: AgentState) -> AgentState:
         messages=[{"role": "user", "content": state["task"] + context}],
     ) as stream:
         for text in stream.text_stream:
-            print(text, end="", flush=True)
+            console.print(text, end="", markup=False)
             result += text
-    print()
+    console.print()
 
     if not state.get("agent_outputs"):
         state["agent_outputs"] = {}
@@ -526,9 +535,10 @@ def route_decision(state: AgentState) -> str:
         task = (state.get("task") or "").lower()
         codex_signals = ("build entire", "refactor", "entire app", "full project", "from scratch")
         if not any(s in task for s in codex_signals):
-            # Demote to CODER
-            state["route"] = "CODER"
-            route = "CODER"
+            # Demote to CODER (return directly, don't mutate state)
+            if "CODER" in agent_outputs:
+                return "__end__"
+            return "CODER"
         if "CODER" in agent_outputs:
             return "__end__"
 

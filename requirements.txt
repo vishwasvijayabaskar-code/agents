@@ -1,0 +1,8 @@
+langgraph==1.1.10
+litellm==1.83.14
+rich==15.0.0
+chromadb==1.5.9
+sentence-transformers==5.4.1
+ddgs==9.14.2
+python-dotenv==1.2.2
+anthropic==0.101.0

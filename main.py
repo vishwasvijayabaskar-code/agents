@@ -18,43 +18,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from graph import build_graph
-from agents import _load_project_context, _embed_memory
+from helpers import _load_project_context, _embed_memory
 from ui import console, print_task_header, print_separator, print_agents_used, print_files, show_stats_table
 
-MEMORY_FILE = Path(__file__).parent / "memory.json"
 OUTPUT_BASE = Path(__file__).parent / "output"
 SESSIONS_DIR = Path(__file__).parent / "sessions"
 USAGE_FILE = Path(__file__).parent / "usage.jsonl"
 
-def load_memory() -> list[dict]:
-    if MEMORY_FILE.exists():
-        with open(MEMORY_FILE) as f:
-            return json.load(f)
-    return []
+MAX_TASK_CHARS = 10_000
 
-def save_memory(memory: list[dict], task: str, result: str, agents_used: list[str]):
-    memory.append({
-        "timestamp": datetime.now().isoformat(),
-        "task": task,
-        "result": result[:500],
-        "agents_used": agents_used,
-    })
-    memory = memory[-50:]
-    with open(MEMORY_FILE, 'w') as f:
-        json.dump(memory, f, indent=2)
-    return memory
-
-def log_usage(agent: str, model: str, prompt_tokens: int, completion_tokens: int):
-    entry = {
-        "timestamp": datetime.now().isoformat(),
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "agent": agent,
-        "model": model,
-        "prompt_tokens": prompt_tokens,
-        "completion_tokens": completion_tokens,
-    }
-    with open(USAGE_FILE, 'a') as f:
-        f.write(json.dumps(entry) + "\n")
+def check_ollama_health():
+    """Check if Ollama is running and required models are available."""
+    import urllib.request
+    try:
+        req = urllib.request.Request("http://localhost:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read())
+        available = {m["name"] for m in data.get("models", [])}
+        required_envs = ["ORCHESTRATOR_MODEL", "CODER_MODEL", "RESEARCHER_MODEL", "FAST_MODEL"]
+        missing = []
+        for env in required_envs:
+            model = os.getenv(env, "")
+            if model.startswith("ollama/"):
+                model_name = model.replace("ollama/", "")
+                # Check both exact and with :latest suffix
+                if model_name not in available and f"{model_name}:latest" not in available:
+                    missing.append(model_name)
+        if missing:
+            console.print(f"[bold yellow]Warning: models not pulled: {', '.join(missing)}[/bold yellow]")
+            console.print(f"[info]Run: ollama pull {'  &&  ollama pull '.join(missing)}[/info]")
+    except Exception:
+        console.print("[bold red]Ollama not reachable at localhost:11434[/bold red]")
+        console.print("[info]Start with: ollama serve[/info]")
+        sys.exit(1)
 
 def show_stats():
     if not USAGE_FILE.exists():
@@ -97,15 +93,19 @@ def notify(message: str):
         pass
 
 def run(task: str, session_history: list[dict] = None, project_path: str = None, notify_done: bool = False):
+    # Input validation
+    if len(task) > MAX_TASK_CHARS:
+        console.print(f"[bold yellow]Task truncated from {len(task)} to {MAX_TASK_CHARS} chars[/bold yellow]")
+        task = task[:MAX_TASK_CHARS]
+
     graph = build_graph()
-    memory = load_memory()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = str(OUTPUT_BASE / timestamp)
 
     project_ctx = None
     if project_path:
-        print(f"Loading project context from {project_path}...")
+        console.print(f"[info]Loading project context from {project_path}...[/info]")
         project_ctx = _load_project_context(project_path, task)
 
     state = {
@@ -117,7 +117,7 @@ def run(task: str, session_history: list[dict] = None, project_path: str = None,
         "done": False,
         "agent_outputs": {},
         "output_dir": output_dir,
-        "memory": memory,
+        "memory": [],
         "session_history": session_history or [],
         "project_context": project_ctx,
     }
@@ -130,7 +130,6 @@ def run(task: str, session_history: list[dict] = None, project_path: str = None,
     print_agents_used(agents_used)
 
     ts = datetime.now().isoformat()
-    save_memory(memory, task, result["result"] or "", agents_used)
     _embed_memory(task, result["result"] or "", agents_used, ts)
 
     out_path = Path(output_dir)
@@ -186,7 +185,7 @@ def repl(project_path: str = None, session_id: str = None, notify_done: bool = F
         result = run(task, session_history=session_history, project_path=project_path, notify_done=notify_done)
         session_history.append({
             "task": task,
-            "result": (result.get("result") or "")[:800],
+            "result": (result.get("result") or "")[:3000],
             "agents": list(result.get("agent_outputs", {}).keys()),
         })
 
@@ -201,7 +200,11 @@ if __name__ == "__main__":
 
     if args.stats:
         show_stats()
-    elif args.task:
+        sys.exit(0)
+
+    check_ollama_health()
+
+    if args.task:
         run(" ".join(args.task), project_path=args.project, notify_done=args.notify)
     else:
         repl(project_path=args.project, session_id=args.resume, notify_done=args.notify)

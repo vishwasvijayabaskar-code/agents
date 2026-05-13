@@ -2,9 +2,6 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.syntax import Syntax
 from rich.panel import Panel
-from rich.text import Text
-from rich.live import Live
-from rich.spinner import Spinner
 from rich.table import Table
 import re
 
@@ -71,27 +68,6 @@ def render_markdown_code_blocks(text: str):
         else:
             if part.strip():
                 console.print(part, style="result")
-
-def stream_tokens(model: str, completion_fn, system: str, user: str, api_base: str = None) -> str:
-    """Stream tokens with rich live display. Returns full text."""
-    from litellm import completion
-
-    kwargs = {
-        "model": model,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "stream": True,
-    }
-    if api_base:
-        kwargs["api_base"] = api_base
-
-    full_text = ""
-    # Stream directly to console (rich handles ANSI)
-    for chunk in completion(**kwargs):
-        delta = chunk.choices[0].delta.content or ""
-        console.print(delta, end="", markup=False)
-        full_text += delta
-    console.print()
-    return full_text
 
 def show_stats_table(totals: dict, date: str):
     table = Table(title=f"Token Usage — {date}", style="separator")

@@ -40,7 +40,7 @@ ollama pull qwen2.5-coder:32b
 ollama pull deepseek-r1:14b
 ollama pull qwen2.5:7b
 
-pip install langgraph litellm rich chromadb sentence-transformers ddgs python-dotenv anthropic
+pip install -r requirements.txt
 ```
 
 ### Config
@@ -83,13 +83,30 @@ ANTHROPIC_API_KEY=sk-ant-...   # optional — only needed for CLAUDE node
 ./run --stats
 ```
 
-## Files
+## Project Structure
 
-| File | Purpose |
-|------|---------|
-| `agents.py` | All agent node implementations + helpers |
-| `graph.py` | LangGraph wiring, conditional routing |
-| `main.py` | Entry point, REPL, memory, CLI flags |
-| `state.py` | Shared TypedDict state |
-| `ui.py` | Rich TUI helpers |
-| `run` | Bash wrapper (`./run <task>`) |
+```
+agents/
+├── nodes/               # Agent node implementations
+│   ├── orchestrator.py  # Task routing + route_decision logic
+│   ├── coder.py         # Code generation
+│   ├── researcher.py    # Research + web search
+│   ├── fast.py          # Quick answers
+│   ├── executor.py      # Shell command execution (sandboxed)
+│   ├── codex.py         # Codex CLI subprocess
+│   └── claude.py        # Claude API integration
+├── helpers/             # Shared utilities
+│   ├── llm.py           # LLM call + streaming
+│   ├── memory.py        # ChromaDB vector memory
+│   ├── search.py        # DuckDuckGo web search
+│   ├── files.py         # Code block file extraction
+│   ├── session.py       # Session context + anaphora detection
+│   ├── project.py       # Codebase context loader
+│   └── usage.py         # Token usage logging
+├── graph.py             # LangGraph wiring
+├── main.py              # Entry point, REPL, CLI
+├── state.py             # Shared TypedDict state
+├── ui.py                # Rich TUI helpers
+├── run                  # Bash wrapper (./run <task>)
+└── requirements.txt     # Pinned dependencies
+```
