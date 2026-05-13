@@ -5,6 +5,7 @@ from state import AgentState
 from helpers.llm import _call
 from helpers.memory import _relevant_memory
 from helpers.plugins import get_plugin_routes, get_plugin_descriptions
+from helpers.config import cfg
 
 # --- Fast-path routing heuristics ---
 
@@ -58,6 +59,34 @@ def _should_escalate_to_claude(task: str, route: str) -> bool:
         return True
     return False
 
+# --- Confidence routing (Tier 3.4) ---
+
+# Escalation chain: if FAST output is weak, try CODER; if CODER weak, try CLAUDE
+_CONFIDENCE_CHAIN = {"FAST": "CODER", "CODER": "CLAUDE"}
+
+
+def _score_output(task: str, output: str) -> int:
+    """Score agent output quality 1-10. Returns 5 on any failure (neutral)."""
+    fast_model = cfg.model("fast")
+    system = (
+        "You are a quality evaluator. Rate how well the output answers the task on a scale of 1-10. "
+        "Output ONLY a single integer (1-10) with no other text."
+    )
+    user = f"Task: {task}\n\nOutput:\n{output[:1200]}"
+    try:
+        raw = _call(fast_model, system, user).strip()
+        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+        m = re.search(r'\b(10|[1-9])\b', raw)
+        return int(m.group()) if m else 5
+    except Exception:
+        return 5
+
+
+def _confidence_escalation_done(state: AgentState) -> bool:
+    """True if a confidence escalation already happened this task (cap at 1)."""
+    return any("confidence escalation" in h for h in (state.get("history") or []))
+
+
 # --- Orchestrator node ---
 
 def orchestrator(state: AgentState) -> AgentState:
@@ -79,6 +108,28 @@ def orchestrator(state: AgentState) -> AgentState:
             state["iterations"] = 1
             state["history"].append(f"Orchestrator → fast-path route={fast}")
             return state
+
+    # Confidence routing: if exactly 1 worker ran and no prior escalation,
+    # score the output and escalate to a stronger model if quality is low (< 5).
+    agent_outputs_now = state.get("agent_outputs") or {}
+    workers_now = _worker_nodes()
+    workers_ran = [k for k in agent_outputs_now if k in workers_now]
+    if len(workers_ran) == 1 and not _confidence_escalation_done(state):
+        last_agent = workers_ran[0]
+        last_output = agent_outputs_now[last_agent]
+        if last_agent in _CONFIDENCE_CHAIN:
+            score = _score_output(state["task"], last_output)
+            if score < 5:
+                target = _CONFIDENCE_CHAIN[last_agent]
+                # Don't escalate if target already ran
+                if target not in agent_outputs_now:
+                    state["route"] = target
+                    state["done"] = False
+                    state["iterations"] = state.get("iterations", 0) + 1
+                    state["history"].append(
+                        f"Orchestrator → confidence escalation {last_agent}→{target} (score={score}/10)"
+                    )
+                    return state
 
     # Full LLM routing for ambiguous / multi-hop tasks
     model = os.getenv("ORCHESTRATOR_MODEL", "ollama/llama3.2")

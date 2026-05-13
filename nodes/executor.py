@@ -2,6 +2,7 @@ import re
 import subprocess
 from pathlib import Path
 from state import AgentState
+from helpers.config import cfg
 from ui import console, print_agent_header
 
 _BLOCKED_PATTERNS = [
@@ -20,6 +21,14 @@ def _is_dangerous(cmd: str) -> bool:
 
 def executor(state: AgentState) -> AgentState:
     """Runs shell commands embedded in coder output. Retries up to 3x on failure."""
+    # Check if EXECUTOR is disabled via config or --no-exec flag
+    if not cfg.get("executor", "enabled", True):
+        msg = "[EXECUTOR disabled — run with executor.enabled=true in config.yaml or remove --no-exec]"
+        console.print(f"[bold yellow]{msg}[/bold yellow]")
+        state.setdefault("agent_outputs", {})["EXECUTOR"] = msg
+        state["history"].append("Executor: disabled")
+        return state
+
     try:
         coder_output = (state.get("agent_outputs") or {}).get("CODER", "")
         run_tags = re.findall(r'<run>(.*?)</run>', coder_output, re.DOTALL)

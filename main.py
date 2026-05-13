@@ -279,11 +279,20 @@ if __name__ == "__main__":
     parser.add_argument("--route", help="Force route to agent: CODER, RESEARCHER, FAST, CLAUDE, CODEX, EXECUTOR")
     parser.add_argument("--chat", action="store_true", help="Multi-turn chat mode with same agent")
     parser.add_argument("--stats", "-s", action="store_true", help="Show today's token usage")
+    parser.add_argument("--no-exec", action="store_true", help="Disable EXECUTOR node (shell commands won't run)")
     args = parser.parse_args()
 
     if args.stats:
         show_stats()
         sys.exit(0)
+
+    # Disable EXECUTOR if --no-exec flag is set
+    if getattr(args, "no_exec", False):
+        from helpers.config import cfg as _cfg
+        if "executor" not in _cfg._data:
+            _cfg._data["executor"] = {}
+        _cfg._data["executor"]["enabled"] = False
+        console.print("[bold yellow]EXECUTOR disabled (--no-exec)[/bold yellow]")
 
     check_ollama_health()
 
