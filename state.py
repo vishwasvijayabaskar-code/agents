@@ -1,0 +1,14 @@
+from typing import TypedDict, Optional
+
+class AgentState(TypedDict):
+    task: str
+    route: Optional[str]
+    result: Optional[str]
+    history: list[str]
+    iterations: int
+    done: bool
+    agent_outputs: dict[str, str]
+    output_dir: Optional[str]
+    memory: list[dict]
+    session_history: list[dict]
+    project_context: Optional[str]

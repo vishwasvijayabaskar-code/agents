@@ -1,0 +1,2 @@
+#!/bin/bash
+exec python3 -W ignore "$(dirname "$0")/main.py" "$@"

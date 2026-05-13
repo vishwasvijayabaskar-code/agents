@@ -1,0 +1,22 @@
+# Secrets — never commit
+.env
+
+# Runtime data
+chroma/
+output/
+sessions/
+memory.json
+usage.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
