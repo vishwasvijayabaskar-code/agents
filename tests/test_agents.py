@@ -145,3 +145,38 @@ class TestOrchestratorNode:
              patch("nodes.orchestrator._relevant_memory", return_value=""):
             result = orchestrator(state)
         assert result["iterations"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Stream callback (Tier 6.1)
+# ---------------------------------------------------------------------------
+
+class TestStreamCallback:
+    def test_context_manager_sets_and_clears(self):
+        from helpers.llm import stream_callback, _stream_ctx
+        assert getattr(_stream_ctx, 'callback', None) is None
+        cb = lambda x: None
+        with stream_callback(cb):
+            assert _stream_ctx.callback is cb
+        assert _stream_ctx.callback is None
+
+    def test_callback_receives_tokens(self):
+        """_call_stream should invoke thread-local callback for each token."""
+        from helpers.llm import stream_callback
+        tokens = []
+
+        # Mock litellm.completion to yield fake chunks
+        fake_chunk = MagicMock()
+        fake_chunk.choices = [MagicMock()]
+        fake_chunk.choices[0].delta.content = "hello"
+        fake_chunk.usage = None
+
+        with patch("helpers.llm.completion", return_value=iter([fake_chunk])), \
+             patch("helpers.llm.console"), \
+             patch("helpers.llm._log_usage"), \
+             stream_callback(tokens.append):
+            from helpers.llm import _call_stream
+            result = _call_stream("model", "sys", "usr")
+
+        assert "hello" in tokens
+        assert result == "hello"

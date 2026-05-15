@@ -3,8 +3,10 @@
 
 # Runtime data
 chroma/
+chroma_db/
 output/
 sessions/
+*.pkl
 memory.json
 usage.jsonl
 
@@ -17,6 +19,7 @@ venv/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # macOS
 .DS_Store

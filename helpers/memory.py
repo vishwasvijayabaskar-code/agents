@@ -42,3 +42,28 @@ def _relevant_memory(task: str, k: int = 5) -> str:
         return "Semantically relevant past tasks:\n" + "\n---\n".join(docs[:k])
     except Exception:
         return ""
+
+
+def _cache_lookup(task: str, max_distance: float = 0.15) -> str | None:
+    """Check if a near-identical task was run recently. Returns cached result or None.
+    ChromaDB distances: 0.0 = identical, lower = more similar.
+    Default threshold 0.15 ≈ cosine similarity 0.92."""
+    col = _get_chroma()
+    if col is None:
+        return None
+    try:
+        count = col.count()
+        if count == 0:
+            return None
+        results = col.query(
+            query_texts=[task],
+            n_results=1,
+            include=["documents", "distances", "metadatas"],
+        )
+        distances = results.get("distances", [[]])[0]
+        docs = results.get("documents", [[]])[0]
+        if distances and distances[0] <= max_distance and docs:
+            return docs[0]
+    except Exception:
+        pass
+    return None

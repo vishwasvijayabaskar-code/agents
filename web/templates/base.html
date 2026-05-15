@@ -200,6 +200,8 @@
     <a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>Run</a>
     <a href="/history" {% if request.url.path == "/history" %}class="active"{% endif %}>History</a>
     <a href="/stats" {% if request.url.path == "/stats" %}class="active"{% endif %}>Stats</a>
+    <a href="/models" {% if request.url.path == "/models" %}class="active"{% endif %}>Models</a>
+    <a href="/graph" {% if request.url.path == "/graph" %}class="active"{% endif %}>Graph</a>
   </nav>
   <main>
     {% block content %}{% endblock %}

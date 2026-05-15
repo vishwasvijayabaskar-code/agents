@@ -14,8 +14,14 @@ def coder(state: AgentState) -> AgentState:
             context += f"\n\n{state['project_context']}"
         if (state.get("agent_outputs") or {}).get("RESEARCHER"):
             context += f"\n\nResearch context:\n{state['agent_outputs']['RESEARCHER']}"
+        # Subtask context: use specific subtask instruction if decomposed
+        subtasks = state.get("subtasks")
+        if subtasks:
+            idx = state.get("current_subtask", 1) - 1
+            if 0 <= idx < len(subtasks):
+                context += f"\n\nSubtask instruction: {subtasks[idx]['task']}"
 
-        system = "You are an expert software engineer. Write clean, production-quality code. Always prefix each code block with its filename like **app.py** or **styles.css** on its own line. CRITICAL: If session context or project_files describe existing code or a project already built, you MUST extend/modify that exact project — do NOT start fresh, do NOT switch languages or frameworks, do NOT invent a new stack."
+        system = "You are an expert software engineer. Write clean, production-quality code. Always prefix each code block with its filename like **app.py** or **styles.css** on its own line. CRITICAL: If session context or project_files describe existing code or a project already built, you MUST extend/modify that exact project — do NOT start fresh, do NOT switch languages or frameworks, do NOT invent a new stack. If you need to look up API docs, library usage, or external info, you can delegate: <delegate agent=\"RESEARCHER\">your query</delegate>"
         print_agent_header("CODER", model)
         chat_msgs = state.get("chat_messages") or None
         result = _call_stream(model, system, state["task"] + context, agent="CODER", messages=chat_msgs)

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}agents — graph{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h2>Agent Graph</h2>
+<p class="muted" style="margin-bottom:20px; font-size:13px;">Live topology of orchestrator routing. Includes plugin nodes if any loaded.</p>
+
+<div class="card" style="text-align:center; padding:32px;">
+  <div id="graph-container">
+    <pre class="mermaid" id="mermaid-src"></pre>
+  </div>
+  <div id="graph-error" class="error-text" style="display:none;"></div>
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#58a6ff',
+    primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#30363d',
+    lineColor: '#8b949e',
+    secondaryColor: '#161b22',
+    tertiaryColor: '#1f2428'
+  }
+});
+
+fetch('/api/graph')
+  .then(r => r.json())
+  .then(data => {
+    const el = document.getElementById('mermaid-src');
+    el.textContent = data.mermaid;
+    mermaid.run({nodes: [el]});
+  })
+  .catch(err => {
+    document.getElementById('graph-error').textContent = 'Failed to load graph: ' + err.message;
+    document.getElementById('graph-error').style.display = 'block';
+  });
+</script>
+{% endblock %}

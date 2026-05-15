@@ -15,3 +15,6 @@ class AgentState(TypedDict):
     force_route: Optional[str]
     chat_messages: list[dict]
     fanout_tasks: Optional[dict]
+    tokens_used: int
+    subtasks: Optional[list[dict]]
+    current_subtask: int

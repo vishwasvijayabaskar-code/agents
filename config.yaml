@@ -10,6 +10,8 @@ limits:
   max_task_chars: 10000
   session_result_chars: 3000
   project_max_bytes: 150000
+  max_tokens_per_task: 0  # 0 = unlimited. Set e.g. 50000 to enforce budget
+  cache_ttl_hours: 24     # 0 = disable result caching
 
 executor:
   enabled: true
@@ -28,3 +30,4 @@ researcher:
   max_search_results: 5
   max_page_fetches: 2
   max_page_chars: 5000
+  summarize_pages: true  # compress fetched pages with fast model before injection

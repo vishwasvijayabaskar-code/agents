@@ -19,6 +19,7 @@ load_dotenv()
 
 from graph import build_graph
 from helpers import _load_project_context, _embed_memory, cfg
+from helpers.llm import token_budget, get_budget_used, TokenBudgetExceeded
 from ui import console, print_task_header, print_separator, print_agents_used, print_files, show_stats_table
 
 OUTPUT_BASE = Path(__file__).parent / "output"
@@ -31,7 +32,8 @@ def check_ollama_health():
     """Check if Ollama is running and required models are available."""
     import urllib.request
     try:
-        req = urllib.request.Request("http://localhost:11434/api/tags")
+        base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+        req = urllib.request.Request(f"{base}/api/tags")
         with urllib.request.urlopen(req, timeout=3) as resp:
             data = json.loads(resp.read())
         available = {m["name"] for m in data.get("models", [])}
@@ -47,7 +49,7 @@ def check_ollama_health():
             console.print(f"[bold yellow]Warning: models not pulled: {', '.join(missing)}[/bold yellow]")
             console.print(f"[info]Run: ollama pull {'  &&  ollama pull '.join(missing)}[/info]")
     except Exception:
-        console.print("[bold red]Ollama not reachable at localhost:11434[/bold red]")
+        console.print(f"[bold red]Ollama not reachable at {base}[/bold red]")
         console.print("[info]Start with: ollama serve[/info]")
         sys.exit(1)
 
@@ -114,6 +116,8 @@ def run(
         console.print(f"[info]Loading project context from {project_path}...[/info]")
         project_ctx = _load_project_context(project_path, task)
 
+    max_tokens = cfg.get("limits", "max_tokens_per_task", 0)
+
     state = {
         "task": task,
         "route": None,
@@ -128,14 +132,30 @@ def run(
         "project_context": project_ctx,
         "force_route": force_route,
         "chat_messages": chat_messages or [],
+        "tokens_used": 0,
+        "subtasks": None,
+        "current_subtask": 0,
     }
 
     print_task_header(task)
-    result = graph.invoke(state)
+    with token_budget(max_tokens):
+        try:
+            result = graph.invoke(state)
+        except TokenBudgetExceeded:
+            console.print("[bold yellow][Budget exceeded — returning partial result][/bold yellow]")
+            result = state
+            if not result.get("result"):
+                # Grab whatever output exists
+                outputs = result.get("agent_outputs") or {}
+                result["result"] = list(outputs.values())[-1] if outputs else "[Budget exceeded before any agent completed]"
+            result["result"] = (result.get("result") or "") + "\n\n[Token budget exceeded]"
+        result["tokens_used"] = get_budget_used()
 
     agents_used = list(result.get("agent_outputs", {}).keys())
     print_separator()
     print_agents_used(agents_used)
+    if max_tokens > 0:
+        console.print(f"[info]Tokens: {result['tokens_used']}/{max_tokens}[/info]")
 
     ts = datetime.now().isoformat()
     _embed_memory(task, result["result"] or "", agents_used, ts)

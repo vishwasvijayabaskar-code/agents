@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}agents — models{% endblock %}
+
+{% block content %}
+<h2>Model Configuration</h2>
+<p class="muted" style="margin-bottom:20px; font-size:13px;">Hot-swap models at runtime. Changes take effect on next task.</p>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Node</th>
+        <th>Current Model</th>
+        <th>New Model</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for node, model in models.items() %}
+      <tr id="row-{{ node }}">
+        <td><span class="badge badge-blue">{{ node.upper() }}</span></td>
+        <td class="mono current-model">{{ model }}</td>
+        <td>
+          <input type="text" class="model-input" data-node="{{ node }}" value="{{ model }}" style="margin:0; padding:6px 10px; font-size:12px;">
+        </td>
+        <td>
+          <button class="btn btn-secondary swap-btn" data-node="{{ node }}" style="padding:6px 12px; font-size:11px;">
+            Swap
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="model-status" class="muted" style="font-size:12px; margin-top:8px;"></div>
+
+<script>
+(function() {
+  document.querySelectorAll('.swap-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const node = this.dataset.node;
+      const input = document.querySelector(`.model-input[data-node="${node}"]`);
+      const model = input.value.trim();
+      if (!model) return;
+
+      const status = document.getElementById('model-status');
+      btn.disabled = true;
+
+      fetch('/api/model', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({node, model})
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          const row = document.getElementById('row-' + node);
+          row.querySelector('.current-model').textContent = model;
+          status.textContent = `${node.toUpperCase()} → ${model}`;
+          status.style.color = 'var(--accent2)';
+        } else {
+          status.textContent = data.error || 'Failed';
+          status.style.color = 'var(--danger)';
+        }
+        btn.disabled = false;
+      })
+      .catch(err => {
+        status.textContent = 'Request failed: ' + err.message;
+        status.style.color = 'var(--danger)';
+        btn.disabled = false;
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

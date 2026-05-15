@@ -1,10 +1,10 @@
-import os
 import re
 import json
 from state import AgentState
 from helpers.llm import _call
-from helpers.memory import _relevant_memory
+from helpers.memory import _relevant_memory, _cache_lookup
 from helpers.plugins import get_plugin_routes, get_plugin_descriptions
+from helpers.delegation import parse_delegation, strip_delegation_tags, execute_delegation
 from helpers.config import cfg
 
 # --- Fast-path routing heuristics ---
@@ -65,8 +65,34 @@ def _should_escalate_to_claude(task: str, route: str) -> bool:
 _CONFIDENCE_CHAIN = {"FAST": "CODER", "CODER": "CLAUDE"}
 
 
+def _heuristic_score(output: str) -> int | None:
+    """Fast heuristic pre-check. Returns score if confident, None if ambiguous.
+    Returns int if confident, None if LLM scoring needed."""
+    if not output:
+        return 2
+    stripped = output.strip()
+    low = stripped.lower()
+    # Check error signals first (regardless of length)
+    _ERROR_SIGNALS = ("sorry, i can't", "sorry, i cannot", "i cannot help",
+                      "unable to", "i can't help", "[error", "error:")
+    if any(sig in low for sig in _ERROR_SIGNALS):
+        return 3  # likely bad → let LLM confirm
+    # Too short = suspicious
+    if len(stripped) < 50:
+        return 2
+    # Has code blocks = probably good
+    if "```" in output or ("def " in output and "return " in output) or ("function " in output and "{" in output):
+        return 7  # skip LLM
+    return None  # ambiguous → need LLM
+
+
 def _score_output(task: str, output: str) -> int:
-    """Score agent output quality 1-10. Returns 5 on any failure (neutral)."""
+    """Score agent output quality 1-10. Uses heuristic first, LLM only if ambiguous."""
+    # Heuristic pre-check to avoid unnecessary LLM call
+    heuristic = _heuristic_score(output)
+    if heuristic is not None:
+        return heuristic
+
     fast_model = cfg.model("fast")
     system = (
         "You are a quality evaluator. Rate how well the output answers the task on a scale of 1-10. "
@@ -87,6 +113,53 @@ def _confidence_escalation_done(state: AgentState) -> bool:
     return any("confidence escalation" in h for h in (state.get("history") or []))
 
 
+# --- Task decomposition (Tier 8B) ---
+
+def _is_multi_hop(task: str) -> bool:
+    """True if task contains multi-hop signals and is non-trivial."""
+    t = task.lower()
+    return len(task) > 60 and any(kw in t for kw in _MULTI_HOP)
+
+
+def _decompose_task(task: str, model: str) -> list[dict] | None:
+    """Ask LLM to decompose a multi-hop task into subtasks.
+    Returns list of {"route": ..., "task": ...} or None if decomposition fails."""
+    system = """You are a task decomposer. Break the user's task into 2-4 sequential subtasks.
+Output ONLY a valid JSON array. No explanation. No markdown.
+Each subtask has "route" (RESEARCHER, CODER, FAST, CLAUDE, CODEX) and "task" (specific instruction).
+
+Example:
+[{"route": "RESEARCHER", "task": "find the latest React best practices for 2025"},
+ {"route": "CODER", "task": "build a todo app applying those best practices"}]
+
+Rules:
+- RESEARCHER for anything needing web search or analysis
+- CODER for code generation
+- CLAUDE for complex reasoning or writing
+- FAST for simple lookups
+- Max 4 subtasks
+- Each subtask.task should be specific and self-contained"""
+
+    try:
+        raw = _call(model, system, f"Task: {task}").strip()
+        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+        # Extract JSON array
+        match = re.search(r'\[.*\]', raw, re.DOTALL)
+        if match:
+            subtasks = json.loads(match.group())
+            # Validate structure
+            if isinstance(subtasks, list) and len(subtasks) >= 2:
+                valid = all(
+                    isinstance(s, dict) and "route" in s and "task" in s
+                    for s in subtasks
+                )
+                if valid:
+                    return subtasks[:4]  # cap at 4
+    except Exception:
+        pass
+    return None
+
+
 # --- Orchestrator node ---
 
 def orchestrator(state: AgentState) -> AgentState:
@@ -99,6 +172,39 @@ def orchestrator(state: AgentState) -> AgentState:
         state["history"].append(f"Orchestrator → forced route={force}")
         return state
 
+    # --- Cache check: if near-identical task was run recently, return cached ---
+    if state.get("iterations", 0) == 0 and not state.get("agent_outputs"):
+        cache_enabled = cfg.get("limits", "cache_ttl_hours", 24) > 0
+        if cache_enabled:
+            cached = _cache_lookup(state["task"])
+            if cached:
+                state["result"] = cached
+                state["done"] = True
+                state["iterations"] = 1
+                state["history"].append("Orchestrator → cache hit (similar task found in memory)")
+                return state
+
+    # --- Subtask execution: if subtasks exist, execute next one ---
+    subtasks = state.get("subtasks")
+    if subtasks:
+        idx = state.get("current_subtask", 0)
+        if idx < len(subtasks):
+            st = subtasks[idx]
+            state["route"] = st["route"]
+            state["done"] = False
+            state["iterations"] = state.get("iterations", 0) + 1
+            state["current_subtask"] = idx + 1
+            state["history"].append(
+                f"Orchestrator → subtask {idx+1}/{len(subtasks)}: route={st['route']}, task={st['task'][:60]}"
+            )
+            return state
+        else:
+            # All subtasks done
+            state["subtasks"] = None
+            state["done"] = True
+            state["history"].append("Orchestrator → all subtasks complete")
+            return state
+
     # Fast-path: skip LLM for simple/obvious tasks on first iteration
     if state.get("iterations", 0) == 0 and not state.get("agent_outputs"):
         fast = _fast_route(state["task"])
@@ -108,6 +214,48 @@ def orchestrator(state: AgentState) -> AgentState:
             state["iterations"] = 1
             state["history"].append(f"Orchestrator → fast-path route={fast}")
             return state
+
+    # --- Multi-hop decomposition: on first iteration for complex tasks ---
+    if state.get("iterations", 0) == 0 and _is_multi_hop(state["task"]):
+        model = cfg.model("orchestrator")
+        subtasks = _decompose_task(state["task"], model)
+        if subtasks:
+            state["subtasks"] = subtasks
+            state["current_subtask"] = 0
+            state["history"].append(
+                f"Orchestrator → decomposed into {len(subtasks)} subtasks: "
+                + " → ".join(s["route"] for s in subtasks)
+            )
+            # Re-enter to execute first subtask
+            return orchestrator(state)
+
+    # --- Delegation post-processing (Tier 8D) ---
+    # After a worker runs, check if its output contains <delegate> tags.
+    # If so, execute the delegated task and re-run the original worker with
+    # the delegated result injected. Max 1 delegation per task.
+    already_delegated = any("delegation" in h for h in (state.get("history") or []))
+    if not already_delegated:
+        agent_outputs_check = state.get("agent_outputs") or {}
+        for agent_name, output in agent_outputs_check.items():
+            delegation = parse_delegation(output)
+            if delegation:
+                target_agent, query = delegation
+                # Look up node function for target agent
+                node_map = _get_delegation_targets()
+                if target_agent in node_map:
+                    state["history"].append(
+                        f"Orchestrator → delegation {agent_name}→{target_agent}: {query[:60]}"
+                    )
+                    delegate_result = execute_delegation(
+                        target_agent, query, node_map[target_agent], state
+                    )
+                    # Inject delegation result back and strip tags from original
+                    clean_output = strip_delegation_tags(output)
+                    state["agent_outputs"][agent_name] = (
+                        clean_output + f"\n\n[Delegated from {target_agent}]:\n{delegate_result[:1500]}"
+                    )
+                    state["result"] = state["agent_outputs"][agent_name]
+                break  # max 1 delegation per pass
 
     # Confidence routing: if exactly 1 worker ran and no prior escalation,
     # score the output and escalate to a stronger model if quality is low (< 5).
@@ -133,8 +281,8 @@ def orchestrator(state: AgentState) -> AgentState:
                     )
                     return state
 
-    # Full LLM routing for ambiguous / multi-hop tasks
-    model = os.getenv("ORCHESTRATOR_MODEL", "ollama/llama3.2")
+    # Full LLM routing for ambiguous / non-decomposable tasks
+    model = cfg.model("orchestrator")
 
     prev_outputs = ""
     for agent, output in (state.get("agent_outputs") or {}).items():
@@ -220,13 +368,29 @@ def _worker_nodes() -> set[str]:
     return _BUILTIN_WORKERS | set(get_plugin_routes())
 
 
+def _get_delegation_targets() -> dict:
+    """Return {name: node_fn} for agents that can be delegated to."""
+    # Import lazily to avoid circular imports
+    from nodes import coder, researcher, fast, claude
+    return {
+        "CODER": coder,
+        "RESEARCHER": researcher,
+        "FAST": fast,
+        "CLAUDE": claude,
+    }
+
+
 def route_decision(state: AgentState) -> str:
     agent_outputs = state.get("agent_outputs") or {}
     route = state.get("route")
     workers = _worker_nodes()
 
+    # Iteration cap: higher for subtask mode (2 per subtask + 1 for decomposition)
+    subtasks = state.get("subtasks")
+    max_iter = (len(subtasks) * 2 + 1) if subtasks else 3
+
     # Hard stop: done flag or iteration cap
-    if state.get("done") or state.get("iterations", 0) >= 3:
+    if state.get("done") or state.get("iterations", 0) >= max_iter:
         return _maybe_synthesize(agent_outputs, workers)
 
     # Hard-coded guard: never re-run an agent that already produced output

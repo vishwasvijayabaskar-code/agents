@@ -87,7 +87,9 @@
     body.append('task', task);
     body.append('route', route);
 
-    // Use fetch + ReadableStream for SSE (works better than EventSource with POST)
+    // Stream SSE — handle token-by-token and final result events
+    let currentEvent = '';
+
     fetch('/run', { method: 'POST', body })
       .then(res => {
         if (!res.ok) { throw new Error('HTTP ' + res.status); }
@@ -108,23 +110,34 @@
 
             for (const line of lines) {
               if (line.startsWith('event: ')) {
-                // event type (handled below)
+                currentEvent = line.slice(7).trim();
               } else if (line.startsWith('data: ')) {
                 const raw = line.slice(6).trim();
                 if (!raw || raw === '{}') continue;
                 try {
                   const payload = JSON.parse(raw);
-                  if (payload.result !== undefined) {
-                    output.textContent = payload.result;
+
+                  if (currentEvent === 'token' && payload.token) {
+                    // Live token — append to output
+                    output.textContent += payload.token;
                     output.scrollTop = output.scrollHeight;
+                    statusText.textContent = 'Streaming…';
                   }
-                  if (payload.agents && payload.agents.length) {
-                    agentsUsed.style.display = 'block';
-                    agentsList.innerHTML = payload.agents
-                      .map(a => `<span class="badge badge-blue">${escapeHtml(a)}</span>`)
-                      .join(' ');
+
+                  if (currentEvent === 'result') {
+                    // Final result — replace output (may include orchestrator text not streamed)
+                    if (payload.result && !output.textContent.trim()) {
+                      output.textContent = payload.result;
+                    }
+                    if (payload.agents && payload.agents.length) {
+                      agentsUsed.style.display = 'block';
+                      agentsList.innerHTML = payload.agents
+                        .map(a => `<span class="badge badge-blue">${escapeHtml(a)}</span>`)
+                        .join(' ');
+                    }
                   }
-                  if (payload.error) {
+
+                  if (currentEvent === 'error' && payload.error) {
                     output.innerHTML = '<span class="error-text">Error: ' + escapeHtml(payload.error) + '</span>';
                   }
                 } catch (_) {}

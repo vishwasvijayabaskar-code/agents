@@ -26,6 +26,9 @@ def make_state(**overrides) -> dict:
         "force_route": None,
         "chat_messages": [],
         "fanout_tasks": None,
+        "tokens_used": 0,
+        "subtasks": None,
+        "current_subtask": 0,
     }
     base.update(overrides)
     return base
