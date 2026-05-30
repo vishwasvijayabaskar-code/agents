@@ -2,7 +2,7 @@
 
 > **Local multi-agent AI orchestration. Research → code → execute — fully automated, fully offline.**
 
-[![Tests](https://img.shields.io/badge/tests-137%20passing-brightgreen)](tests/)
+[![Tests](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml/badge.svg)](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Ollama](https://img.shields.io/badge/runs%20on-Ollama-orange)](https://ollama.com)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
@@ -165,6 +165,22 @@ All other settings in `config.yaml` — models, token budgets, caching.
 
 # Today's token usage
 ./run --stats
+
+# Index a codebase, then ask questions about it
+./run --index ~/myproject
+./run --project ~/myproject --route CODEBASE "where is the auth middleware defined?"
+
+# File-watcher: drop files into watch/, agents process them automatically
+./run --watch
+#   watch/task.txt   → plain task
+#   watch/job.task   → YAML {task, route, project}
+#   watch/page.url   → fetch + summarize URL
+#   watch/buggy.py   → code review
+
+# Run the eval/benchmark suite
+./run --eval                # full suite
+./run --eval coder fast     # filter by tags
+python3 evals/runner.py --compare   # regression check vs last run
 ```
 
 ### REPL commands
@@ -283,7 +299,7 @@ pip install pytest pytest-mock
 python3 -m pytest tests/ -v
 ```
 
-137 tests. Covers routing, fast-path heuristics, confidence escalation, task decomposition, agent delegation, budget enforcement, synthesizer, plugins, config, executor security. No Ollama required (all LLM calls mocked).
+209 tests. Covers routing, fast-path heuristics, confidence escalation, task decomposition, agent delegation, budget enforcement, codebase indexing, file-watcher, eval harness, synthesizer, plugins, config, executor security. No Ollama required (all LLM calls mocked).
 
 ---
 
@@ -313,7 +329,7 @@ agents/
 │   └── plugins.py       # plugin loader
 ├── plugins/
 │   └── translator.py    # example: TRANSLATOR agent
-├── tests/               # 137 tests (no Ollama required)
+├── tests/               # 209 tests (no Ollama required)
 ├── web/
 │   ├── app.py           # FastAPI + SSE task runner
 │   └── templates/       # Jinja2 HTML
@@ -349,7 +365,7 @@ Main advantage: small, hackable, local-first. You can read and understand the wh
 
 ## Contributing
 
-PRs welcome. Run `pytest tests/` before submitting — all 137 must pass.
+PRs welcome. Run `pytest tests/` before submitting — all 209 must pass.
 
 ## License
 

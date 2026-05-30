@@ -10,6 +10,12 @@ sessions/
 memory.json
 usage.jsonl
 
+# Eval run artifacts
+evals/results/*.json
+
+# File-watcher inbox (user task files)
+watch/
+
 # Python
 __pycache__/
 *.py[cod]
