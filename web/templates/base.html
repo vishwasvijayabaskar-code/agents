@@ -202,6 +202,9 @@
     <a href="/stats" {% if request.url.path == "/stats" %}class="active"{% endif %}>Stats</a>
     <a href="/models" {% if request.url.path == "/models" %}class="active"{% endif %}>Models</a>
     <a href="/graph" {% if request.url.path == "/graph" %}class="active"{% endif %}>Graph</a>
+    {% if auth_enabled is defined and auth_enabled %}
+    <a href="/logout" style="margin-left:auto;color:var(--muted)">Logout</a>
+    {% endif %}
   </nav>
   <main>
     {% block content %}{% endblock %}

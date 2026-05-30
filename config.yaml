@@ -31,3 +31,7 @@ researcher:
   max_page_fetches: 2
   max_page_chars: 5000
   summarize_pages: true  # compress fetched pages with fast model before injection
+
+web:
+  auth_token: ""          # Set to a password to enable auth (empty = no auth)
+  secret_key: ""          # Session signing key — auto-generated if empty

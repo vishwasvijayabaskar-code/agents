@@ -135,6 +135,7 @@ def run(
         "tokens_used": 0,
         "subtasks": None,
         "current_subtask": 0,
+        "project_context_path": str(Path(project_path).resolve()) if project_path else None,
     }
 
     print_task_header(task)
@@ -314,11 +315,37 @@ if __name__ == "__main__":
     parser.add_argument("--chat", action="store_true", help="Multi-turn chat mode with same agent")
     parser.add_argument("--stats", "-s", action="store_true", help="Show today's token usage")
     parser.add_argument("--no-exec", action="store_true", help="Disable EXECUTOR node (shell commands won't run)")
+    parser.add_argument("--watch", "-w", nargs="?", const="watch", metavar="DIR",
+                        help="File-watcher mode: process files dropped into DIR (default: ./watch/)")
+    parser.add_argument("--index", metavar="PATH",
+                        help="Index a codebase for semantic search (use with --project)")
+    parser.add_argument("--eval", nargs="*", metavar="TAG",
+                        help="Run eval suite (optionally filter by tags: --eval coder fast)")
     args = parser.parse_args()
 
     if args.stats:
         show_stats()
         sys.exit(0)
+
+    if args.watch is not None:
+        from watch import watch as _watch
+        _watch(directory=args.watch if args.watch != "watch" else None)
+        sys.exit(0)
+
+    if args.index:
+        from helpers.codebase import CodebaseIndex
+        path = args.index
+        console.print(f"[info]Indexing {path}...[/info]")
+        idx = CodebaseIndex(path)
+        n = idx.index(force=True)
+        console.print(f"[bold green]Indexed {n} chunks from {path}[/bold green]")
+        sys.exit(0)
+
+    if args.eval is not None:
+        from evals.runner import run_suite
+        tags = args.eval if args.eval else None
+        summary = run_suite(tags=tags)
+        sys.exit(0 if summary.get("failed", 0) == 0 else 1)
 
     # Disable EXECUTOR if --no-exec flag is set
     if getattr(args, "no_exec", False):
@@ -334,7 +361,7 @@ if __name__ == "__main__":
     force_route = None
     if args.route:
         force_route = args.route.upper()
-        valid_routes = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR"}
+        valid_routes = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR", "CODEBASE"}
         if force_route not in valid_routes:
             console.print(f"[bold red]Invalid route: {args.route}. Valid: {', '.join(sorted(valid_routes))}[/bold red]")
             sys.exit(1)

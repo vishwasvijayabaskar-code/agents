@@ -19,6 +19,7 @@
           <option value="CLAUDE">CLAUDE — deep reasoning</option>
           <option value="CODEX">CODEX — multi-file builds</option>
           <option value="EXECUTOR">EXECUTOR — run code</option>
+          <option value="CODEBASE">CODEBASE — explore indexed project</option>
         </select>
       </div>
       <button type="submit" class="btn btn-primary" id="run-btn">
@@ -39,6 +40,22 @@
   <span class="muted" style="font-size:12px;">Agents used: </span>
   <span id="agents-list"></span>
 </div>
+
+{% if session_tasks %}
+<div class="card" style="margin-top:24px;">
+  <h3>This session</h3>
+  {% for t in session_tasks|reverse %}
+  <div style="padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer;"
+       onclick="document.getElementById('task').value=this.querySelector('.task-text').textContent">
+    <div class="task-text" style="font-size:13px; margin-bottom:3px;">{{ t.task[:100] }}{% if t.task|length > 100 %}…{% endif %}</div>
+    <div style="font-size:11px; color:var(--muted);">
+      {% for a in t.agents %}<span class="badge badge-blue" style="font-size:9px;">{{ a }}</span> {% endfor %}
+      <span>{{ t.ts[:16].replace('T',' ') }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <script>
 (function() {

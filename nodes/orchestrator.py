@@ -317,7 +317,8 @@ CODEX: autonomous coding tasks that require file creation, refactoring whole pro
 RESEARCHER: research, analysis, planning, science, strategy (uses web search)
 FAST: summaries, simple questions, quick answers
 CLAUDE: complex reasoning, writing, essays, multi-step analysis, anything needing deep thought. Also: large code tasks, architecture, production-grade systems.
-EXECUTOR: run/test the code that CODER just wrote (use AFTER CODER when user says "run it", "test it", "execute it", "verify it works"){plugin_info}
+EXECUTOR: run/test the code that CODER just wrote (use AFTER CODER when user says "run it", "test it", "execute it", "verify it works")
+CODEBASE: answer questions about an indexed codebase — "how does X work in this project", "where is Y defined", "write a PR to fix Z" (use when --project is set and task is about understanding existing code){plugin_info}
 
 Rules:
 - If a previous agent already answered the task well, set done=true
@@ -362,7 +363,7 @@ Rules:
     return state
 
 
-_BUILTIN_WORKERS = {"CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR"}
+_BUILTIN_WORKERS = {"CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR", "CODEBASE"}
 
 def _worker_nodes() -> set[str]:
     return _BUILTIN_WORKERS | set(get_plugin_routes())

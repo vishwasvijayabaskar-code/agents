@@ -1,9 +1,9 @@
 from langgraph.graph import StateGraph, END
-from nodes import orchestrator, coder, researcher, fast, codex, claude, executor, synthesizer, route_decision
+from nodes import orchestrator, coder, researcher, fast, codex, claude, executor, synthesizer, codebase_agent, route_decision
 from helpers.plugins import load_plugins, get_plugin_nodes, get_plugin_routes
 from state import AgentState
 
-_BUILTIN_WORKERS = ("CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR")
+_BUILTIN_WORKERS = ("CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR", "CODEBASE")
 
 
 def build_graph():
@@ -22,6 +22,7 @@ def build_graph():
     graph.add_node("CODEX", codex)
     graph.add_node("CLAUDE", claude)
     graph.add_node("EXECUTOR", executor)
+    graph.add_node("CODEBASE", codebase_agent)
     graph.add_node("SYNTHESIZE", synthesizer)
 
     # Plugin nodes (dynamic)
@@ -38,6 +39,7 @@ def build_graph():
         "CODEX": "CODEX",
         "CLAUDE": "CLAUDE",
         "EXECUTOR": "EXECUTOR",
+        "CODEBASE": "CODEBASE",
         "SYNTHESIZE": "SYNTHESIZE",
         "__end__": END,
     }

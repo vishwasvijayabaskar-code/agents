@@ -1,23 +1,27 @@
 """
 FastAPI web UI for the multi-agent system.
-Features: task input, SSE streaming output, history view, stats.
+Features: task input, SSE streaming output, history view, stats,
+          cookie-based session auth, per-session task history.
 
 Run:
     python3 web/app.py              # http://localhost:8000
     uvicorn web.app:app --reload    # dev mode with auto-reload
 """
+import os
 import sys
 import json
+import secrets
 import asyncio
 import pickle
 from pathlib import Path
 from datetime import datetime
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
 # Add agents root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -30,7 +34,43 @@ USAGE_FILE = BASE_DIR / "usage.jsonl"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
+# Per-session in-memory task history: {session_id: [{"task", "result", "agents", "ts"}]}
+_web_sessions: dict[str, list[dict]] = {}
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+def _auth_token() -> str:
+    """Return configured auth token (empty = no auth)."""
+    return cfg.get("web", "auth_token", "") or os.getenv("WEB_AUTH_TOKEN", "")
+
+def _is_authenticated(request: Request) -> bool:
+    token = _auth_token()
+    if not token:
+        return True  # no auth configured
+    return request.session.get("authenticated") is True
+
+def _require_auth(request: Request):
+    """Raise redirect to /login if auth required and not authenticated."""
+    if not _is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+def _get_web_session_id(request: Request) -> str:
+    """Get or create a stable session ID for this browser session."""
+    sid = request.session.get("session_id")
+    if not sid:
+        sid = secrets.token_hex(16)
+        request.session["session_id"] = sid
+    return sid
+
+
 app = FastAPI(title="agents", docs_url=None, redoc_url=None)
+
+# Session middleware — use configured secret or generate one
+_secret = cfg.get("web", "secret_key", "") or os.getenv("WEB_SECRET_KEY", "") or secrets.token_hex(32)
+app.add_middleware(SessionMiddleware, secret_key=_secret, session_cookie="agents_session")
 
 # Static files (CSS, JS)
 if STATIC_DIR.exists():
@@ -139,42 +179,109 @@ async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
 # Routes
 # ---------------------------------------------------------------------------
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = ""):
+    if _is_authenticated(request):
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse(
+        request=request, name="login.html",
+        context={"error": error, "auth_required": bool(_auth_token())},
+    )
+
+
+@app.post("/login")
+async def login_submit(request: Request, password: str = Form(...)):
+    token = _auth_token()
+    if not token:
+        # Auth not configured — just mark authenticated
+        request.session["authenticated"] = True
+        return RedirectResponse(url="/", status_code=302)
+    if secrets.compare_digest(password, token):
+        request.session["authenticated"] = True
+        return RedirectResponse(url="/", status_code=302)
+    return RedirectResponse(url="/login?error=Invalid+password", status_code=302)
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=302)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    if not _is_authenticated(request):
+        if _auth_token():
+            return RedirectResponse(url="/login", status_code=302)
+    sid = _get_web_session_id(request)
+    session_tasks = _web_sessions.get(sid, [])
     models = cfg.list_models()
-    return templates.TemplateResponse(request=request, name="index.html", context={"models": models})
+    return templates.TemplateResponse(
+        request=request, name="index.html",
+        context={"models": models, "session_tasks": session_tasks, "auth_enabled": bool(_auth_token())},
+    )
 
 
 @app.post("/run")
 async def run_task(
+    request: Request,
     task: str = Form(...),
     route: str = Form(default=""),
 ):
     """Run a task and stream back SSE events."""
-    route_val = route.strip().upper() if route.strip() else None
+    if not _is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-    valid_routes = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR", ""}
+    route_val = route.strip().upper() if route.strip() else None
+    valid_routes = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR", "CODEBASE", ""}
     if route_val and route_val not in valid_routes:
         return HTMLResponse(f"Invalid route: {route}", status_code=400)
 
+    sid = _get_web_session_id(request)
+
+    async def _sse_with_history():
+        result_captured = {"result": "", "agents": []}
+        async for chunk in _run_task_sse(task, route_val):
+            yield chunk
+            # Capture result event
+            if chunk.startswith("event: result"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    payload = json.loads(data_line)
+                    result_captured["result"] = payload.get("result", "")
+                    result_captured["agents"] = payload.get("agents", [])
+                except Exception:
+                    pass
+        # Record in web session history
+        if task:
+            _web_sessions.setdefault(sid, []).append({
+                "task": task,
+                "result": result_captured["result"][:500],
+                "agents": result_captured["agents"],
+                "ts": datetime.now().isoformat(),
+            })
+            # Keep last 50 tasks per session
+            _web_sessions[sid] = _web_sessions[sid][-50:]
+
     return StreamingResponse(
-        _run_task_sse(task, route_val),
+        _sse_with_history(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.get("/history", response_class=HTMLResponse)
 async def history(request: Request):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=302)
     sessions = _load_history()
     return templates.TemplateResponse(request=request, name="history.html", context={"sessions": sessions})
 
 
 @app.get("/stats", response_class=HTMLResponse)
 async def stats(request: Request, date: str | None = None):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=302)
     target = date or datetime.now().strftime("%Y-%m-%d")
     rows = _load_stats(target)
     total_tokens = sum(r["prompt"] + r["completion"] for r in rows)
@@ -183,6 +290,15 @@ async def stats(request: Request, date: str | None = None):
         name="stats.html",
         context={"rows": rows, "date": target, "total_tokens": total_tokens},
     )
+
+
+@app.get("/api/session-history")
+async def api_session_history(request: Request):
+    """Return current browser session's task history."""
+    if not _is_authenticated(request):
+        raise HTTPException(status_code=401)
+    sid = _get_web_session_id(request)
+    return {"tasks": _web_sessions.get(sid, [])}
 
 
 @app.get("/api/models")

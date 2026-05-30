@@ -18,3 +18,4 @@ class AgentState(TypedDict):
     tokens_used: int
     subtasks: Optional[list[dict]]
     current_subtask: int
+    project_context_path: Optional[str]  # absolute path for CodebaseIndex
