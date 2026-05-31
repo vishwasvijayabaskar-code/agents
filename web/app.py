@@ -463,6 +463,49 @@ async def runs_page(request: Request):
     return templates.TemplateResponse(request=request, name="runs.html", context={"runs": _load_traces()})
 
 
+def _metrics_text() -> str:
+    """Build a Prometheus text-format exposition from usage.jsonl + runs/."""
+    lines = [
+        "# HELP agents_tokens_total Total tokens by agent and type.",
+        "# TYPE agents_tokens_total counter",
+    ]
+    prompt_by_agent: dict[str, int] = {}
+    completion_by_agent: dict[str, int] = {}
+    calls_by_agent: dict[str, int] = {}
+    if USAGE_FILE.exists():
+        with open(USAGE_FILE) as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except Exception:
+                    continue
+                a = e.get("agent", "UNKNOWN")
+                prompt_by_agent[a] = prompt_by_agent.get(a, 0) + e.get("prompt_tokens", 0)
+                completion_by_agent[a] = completion_by_agent.get(a, 0) + e.get("completion_tokens", 0)
+                calls_by_agent[a] = calls_by_agent.get(a, 0) + 1
+    for a, v in sorted(prompt_by_agent.items()):
+        lines.append(f'agents_tokens_total{{agent="{a}",type="prompt"}} {v}')
+    for a, v in sorted(completion_by_agent.items()):
+        lines.append(f'agents_tokens_total{{agent="{a}",type="completion"}} {v}')
+    lines.append("# HELP agents_calls_total LLM calls by agent.")
+    lines.append("# TYPE agents_calls_total counter")
+    for a, v in sorted(calls_by_agent.items()):
+        lines.append(f'agents_calls_total{{agent="{a}"}} {v}')
+    run_count = len(list(RUNS_DIR.glob("*.json"))) if RUNS_DIR.exists() else 0
+    lines.append("# HELP agents_runs_total Saved run traces.")
+    lines.append("# TYPE agents_runs_total counter")
+    lines.append(f"agents_runs_total {run_count}")
+    return "\n".join(lines) + "\n"
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus-format metrics (unauthenticated — standard for scrapers)."""
+    from fastapi.responses import PlainTextResponse
+
+    return PlainTextResponse(_metrics_text())
+
+
 @app.get("/run/{run_id}", response_class=HTMLResponse)
 async def run_detail(request: Request, run_id: str):
     if not _is_authenticated(request):

@@ -138,3 +138,16 @@ class TestEndpoints:
         with patch("web.app.RUNS_DIR", tmp_path):
             r = client.get("/run/..%2f..%2fetc%2fpasswd")
         assert r.status_code in (404, 400)
+
+    def test_metrics_prometheus_format(self):
+        from web.app import _metrics_text
+
+        text = _metrics_text()
+        assert "# TYPE agents_tokens_total counter" in text
+        assert "agents_runs_total" in text
+
+    def test_metrics_endpoint(self):
+        r = client.get("/metrics")
+        assert r.status_code == 200
+        assert "agents_" in r.text
+        assert r.headers["content-type"].startswith("text/plain")
