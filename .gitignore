@@ -13,6 +13,9 @@ usage.jsonl
 # Eval run artifacts
 evals/results/*.json
 
+# Run traces
+runs/
+
 # File-watcher inbox (user task files)
 watch/
 

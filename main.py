@@ -30,6 +30,32 @@ from ui import console, print_agents_used, print_files, print_separator, print_t
 OUTPUT_BASE = Path(__file__).parent / "output"
 SESSIONS_DIR = Path(__file__).parent / "sessions"
 USAGE_FILE = Path(__file__).parent / "usage.jsonl"
+RUNS_DIR = Path(__file__).parent / "runs"
+
+
+def _save_trace(task: str, result: dict, agents_used: list[str], run_id: str) -> None:
+    """Persist a replayable run trace to runs/<id>.json (if limits.save_traces)."""
+    if not cfg.get("limits", "save_traces", True):
+        return
+    try:
+        RUNS_DIR.mkdir(exist_ok=True)
+        (RUNS_DIR / f"{run_id}.json").write_text(
+            json.dumps(
+                {
+                    "id": run_id,
+                    "task": task,
+                    "result": result.get("result") or "",
+                    "agents": agents_used,
+                    "history": result.get("history", []),
+                    "tokens_used": result.get("tokens_used", 0),
+                    "timestamp": datetime.now().isoformat(),
+                },
+                indent=2,
+            )
+        )
+    except Exception:
+        pass  # tracing must never break a run
+
 
 __version__ = "0.1.0"
 
@@ -122,6 +148,44 @@ def doctor() -> int:
     else:
         console.print(f"[bold yellow]{problems} issue(s) found.[/bold yellow]")
     return problems
+
+
+def list_runs(limit: int = 20) -> None:
+    """Print recent saved run traces."""
+    if not RUNS_DIR.exists():
+        console.print("[info]No saved runs yet.[/info]")
+        return
+    runs = sorted(RUNS_DIR.glob("*.json"), reverse=True)[:limit]
+    if not runs:
+        console.print("[info]No saved runs yet.[/info]")
+        return
+    for r in runs:
+        try:
+            d = json.loads(r.read_text())
+            agents = ", ".join(d.get("agents", [])) or "—"
+            console.print(f"[info]{r.stem}[/info]  [{agents}]  {d.get('task', '')[:70]}")
+        except Exception:
+            continue
+
+
+def replay_run(run_id: str) -> int:
+    """Re-print a saved run trace. Returns 0 on success, 1 if not found."""
+    path = RUNS_DIR / f"{run_id}.json"
+    if not path.exists():
+        console.print(f"[bold yellow]Run '{run_id}' not found.[/bold yellow] [info](see --list-runs)[/info]")
+        return 1
+    d = json.loads(path.read_text())
+    console.print(f"[bold]Task:[/bold] {d.get('task', '')}")
+    console.print(
+        f"[info]Agents: {', '.join(d.get('agents', []))} | tokens: {d.get('tokens_used', 0)} | {d.get('timestamp', '')}[/info]"
+    )
+    if d.get("history"):
+        console.print("\n[bold]Routing trace:[/bold]")
+        for h in d["history"]:
+            console.print(f"  • {h}")
+    console.print("\n[bold]Result:[/bold]")
+    console.print(d.get("result") or "[no result]", markup=False)
+    return 0
 
 
 def init_project() -> None:
@@ -297,6 +361,7 @@ def run(
 
     ts = datetime.now().isoformat()
     _embed_memory(task, result["result"] or "", agents_used, ts)
+    _save_trace(task, result, agents_used, timestamp)
 
     out_path = Path(output_dir)
     if out_path.exists() and any(out_path.iterdir()):
@@ -479,6 +544,8 @@ if __name__ == "__main__":
     parser.add_argument("--clear-cache", action="store_true", help="Clear vector memory / result cache and exit")
     parser.add_argument("--doctor", action="store_true", help="Diagnose environment (Ollama, models, config, keys)")
     parser.add_argument("--init", action="store_true", help="Scaffold .env + print model-pull commands")
+    parser.add_argument("--list-runs", action="store_true", help="List recent saved run traces")
+    parser.add_argument("--replay", metavar="ID", help="Re-print a saved run trace by id")
     # Optional shell completion (pip install argcomplete; see Makefile `completions`)
     try:
         import argcomplete
@@ -495,6 +562,13 @@ if __name__ == "__main__":
     if args.init:
         init_project()
         sys.exit(0)
+
+    if args.list_runs:
+        list_runs()
+        sys.exit(0)
+
+    if args.replay:
+        sys.exit(replay_run(args.replay))
 
     if args.version:
         print(f"agents {get_version()}")

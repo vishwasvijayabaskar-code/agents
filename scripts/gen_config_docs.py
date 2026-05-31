@@ -24,6 +24,7 @@ DESCRIPTIONS = {
     ("limits", "max_tokens_per_task"): "Token budget per task; 0 = unlimited.",
     ("limits", "cache_ttl_hours"): "Result-cache freshness window; 0 = disable caching.",
     ("limits", "llm_retries"): "Retries on transient LLM errors (connection/timeout/5xx).",
+    ("limits", "save_traces"): "Write replayable run traces to runs/ (--list-runs, --replay).",
     ("executor", "enabled"): "Allow the EXECUTOR node to run shell commands.",
     ("executor", "timeout"): "Per-command timeout in seconds.",
     ("executor", "blocked_patterns"): "Substrings that block a command from running.",
