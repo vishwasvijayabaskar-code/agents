@@ -1,15 +1,18 @@
 """Tests for task decomposition (Tier 8B)."""
 import sys
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.conftest import make_state
 from nodes.orchestrator import (
-    _is_multi_hop, _decompose_task, orchestrator,
+    _decompose_task,
+    _is_multi_hop,
+    orchestrator,
 )
+from tests.conftest import make_state
 
 
 class TestIsMultiHop:

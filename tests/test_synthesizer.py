@@ -1,13 +1,14 @@
 """Tests for synthesizer node."""
 import sys
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.conftest import make_state
 from nodes.synthesizer import synthesizer
+from tests.conftest import make_state
 
 
 class TestSynthesizer:

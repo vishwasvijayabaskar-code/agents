@@ -7,18 +7,18 @@ Run:
     python3 web/app.py              # http://localhost:8000
     uvicorn web.app:app --reload    # dev mode with auto-reload
 """
-import os
-import sys
-import json
-import secrets
 import asyncio
+import json
+import os
 import pickle
-from pathlib import Path
+import secrets
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -134,8 +134,8 @@ async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
         loop.call_soon_threadsafe(token_queue.put_nowait, delta)
 
     def _run_in_thread():
-        from main import run as _run
         from helpers.llm import stream_callback
+        from main import run as _run
         try:
             force_route = route.upper() if route else None
             with stream_callback(_token_cb):
@@ -330,7 +330,7 @@ async def models_page(request: Request):
 @app.get("/api/graph")
 async def api_graph():
     """Return mermaid diagram string for the agent graph."""
-    from helpers.plugins import load_plugins, get_plugin_routes
+    from helpers.plugins import get_plugin_routes, load_plugins
     load_plugins()
     plugin_routes = get_plugin_routes()
 
@@ -362,8 +362,9 @@ async def graph_page(request: Request):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    import uvicorn
     import argparse
+
+    import uvicorn
 
     parser = argparse.ArgumentParser(description="agents web UI")
     parser.add_argument("--host", default="127.0.0.1")

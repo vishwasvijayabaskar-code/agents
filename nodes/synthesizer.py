@@ -1,8 +1,7 @@
 """SYNTHESIZE node — merges outputs from parallel fan-out into one result."""
-import os
-from state import AgentState
-from helpers.llm import _call_stream
 from helpers.config import cfg
+from helpers.llm import _call_stream
+from state import AgentState
 from ui import console, print_agent_header
 
 

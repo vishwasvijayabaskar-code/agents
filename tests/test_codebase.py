@@ -1,18 +1,19 @@
 """Tests for codebase indexing and query (Option C)."""
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from helpers.codebase import (
+    _INDEX_EXTS,
+    _SKIP_DIRS,
+    CodebaseIndex,
+    _chunk_file,
     _collection_name,
     _iter_files,
-    _chunk_file,
-    CodebaseIndex,
-    _SKIP_DIRS,
-    _INDEX_EXTS,
 )
 
 

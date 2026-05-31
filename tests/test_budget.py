@@ -1,14 +1,19 @@
 """Tests for token budget enforcement (Tier 8A)."""
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from helpers.llm import (
-    token_budget, get_budget_used, _check_budget, _track_tokens,
-    TokenBudgetExceeded, _stream_ctx,
+    TokenBudgetExceeded,
+    _check_budget,
+    _stream_ctx,
+    _track_tokens,
+    get_budget_used,
+    token_budget,
 )
 
 

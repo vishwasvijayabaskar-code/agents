@@ -2,6 +2,7 @@ import os
 import re
 from pathlib import Path
 
+
 def _write_files(content: str, output_dir: str) -> list[str]:
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     written = []

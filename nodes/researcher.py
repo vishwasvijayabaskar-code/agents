@@ -1,10 +1,10 @@
-import os
 import re
-from state import AgentState
-from helpers.llm import _call_stream
-from helpers.search import _search, _format_search_results, _fetch_page
-from helpers.session import _session_ctx
+
 from helpers.config import cfg
+from helpers.llm import _call_stream
+from helpers.search import _fetch_page, _format_search_results, _search
+from helpers.session import _session_ctx
+from state import AgentState
 from ui import console, print_agent_header
 
 

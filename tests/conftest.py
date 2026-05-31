@@ -1,6 +1,6 @@
 """Shared fixtures for all tests. No Ollama required — all LLM calls mocked."""
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Ensure agents/ root is importable

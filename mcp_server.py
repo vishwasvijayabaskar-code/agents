@@ -17,12 +17,13 @@ Add to Claude Desktop config (~/.claude/claude_desktop_config.json):
   }
 }
 """
-import sys
+import argparse
 import json
 import pickle
-import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,6 +32,7 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent))
 
 from mcp.server.fastmcp import FastMCP
+
 from helpers.config import cfg
 
 BASE_DIR = Path(__file__).parent

@@ -1,13 +1,14 @@
 """Tests for confidence routing (Tier 3.4)."""
 import sys
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from nodes.orchestrator import _confidence_escalation_done, _heuristic_score, _score_output, orchestrator
 from tests.conftest import make_state
-from nodes.orchestrator import _score_output, _heuristic_score, _confidence_escalation_done, orchestrator
 
 # Ambiguous output that heuristic returns None for (forces LLM scoring)
 _AMBIGUOUS_OUTPUT = "The answer to your question involves several considerations. First, we need to understand the underlying principles. Then we can apply them systematically to reach a conclusion."

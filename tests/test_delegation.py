@@ -1,12 +1,13 @@
 """Tests for agent-to-agent delegation (Tier 8D)."""
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.delegation import parse_delegation, strip_delegation_tags, execute_delegation
+from helpers.delegation import execute_delegation, parse_delegation, strip_delegation_tags
 from tests.conftest import make_state
 
 

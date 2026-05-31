@@ -1,5 +1,5 @@
-import re
 import fnmatch
+import re
 from pathlib import Path
 
 _BINARY_EXTS = {'.png','.jpg','.jpeg','.gif','.ico','.svg','.woff','.ttf','.eot','.mp4','.mp3','.zip','.tar','.gz','.pdf','.pyc','.pyo','.so','.dylib','.lock'}
@@ -15,7 +15,7 @@ def _load_project_context(project_path: str, task: str, max_total_bytes: int = 1
     gitignore_patterns = []
     gi = root / ".gitignore"
     if gi.exists():
-        gitignore_patterns = [l.strip() for l in gi.read_text().splitlines() if l.strip() and not l.startswith("#")]
+        gitignore_patterns = [ln.strip() for ln in gi.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
 
     def is_ignored(p: Path) -> bool:
         rel = str(p.relative_to(root))

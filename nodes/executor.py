@@ -1,8 +1,9 @@
 import re
 import subprocess
 from pathlib import Path
-from state import AgentState
+
 from helpers.config import cfg
+from state import AgentState
 from ui import console, print_agent_header
 
 _BLOCKED_PATTERNS = [

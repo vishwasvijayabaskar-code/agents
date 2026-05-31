@@ -1,9 +1,10 @@
-from rich.console import Console
-from rich.theme import Theme
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.table import Table
 import re
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.table import Table
+from rich.theme import Theme
 
 theme = Theme({
     "orchestrator": "bold cyan",

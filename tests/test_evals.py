@@ -1,22 +1,22 @@
 """Tests for eval harness (Option E)."""
-import sys
 import json
-import pytest
+import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from evals.checkers import (
-    check_contains_code,
-    check_contains_any,
-    check_no_error,
-    check_min_length,
-    run_checks,
     all_passed,
+    check_contains_any,
+    check_contains_code,
+    check_min_length,
+    check_no_error,
+    run_checks,
 )
 from evals.suite import SUITE
-
 
 # ---------------------------------------------------------------------------
 # Checker unit tests

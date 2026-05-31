@@ -1,19 +1,19 @@
 """Tests for orchestrator routing logic — no LLM calls needed."""
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.conftest import make_state
 from nodes.orchestrator import (
     _fast_route,
-    _should_escalate_to_claude,
-    route_decision,
     _maybe_synthesize,
+    _should_escalate_to_claude,
     _worker_nodes,
+    route_decision,
 )
-
+from tests.conftest import make_state
 
 # ---------------------------------------------------------------------------
 # _fast_route

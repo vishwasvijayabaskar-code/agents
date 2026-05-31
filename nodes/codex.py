@@ -1,7 +1,9 @@
 import subprocess
 from pathlib import Path
+
 from state import AgentState
 from ui import console, print_agent_header
+
 
 def codex(state: AgentState) -> AgentState:
     """Runs OpenAI Codex CLI non-interactively for autonomous code tasks."""

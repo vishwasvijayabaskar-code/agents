@@ -1,13 +1,13 @@
 """Tests for individual agent nodes — all LLM calls mocked."""
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tests.conftest import make_state
-
 
 # ---------------------------------------------------------------------------
 # FAST node
@@ -153,7 +153,7 @@ class TestOrchestratorNode:
 
 class TestStreamCallback:
     def test_context_manager_sets_and_clears(self):
-        from helpers.llm import stream_callback, _stream_ctx
+        from helpers.llm import _stream_ctx, stream_callback
         assert getattr(_stream_ctx, 'callback', None) is None
         cb = lambda x: None
         with stream_callback(cb):

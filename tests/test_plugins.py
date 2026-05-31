@@ -1,15 +1,16 @@
 """Tests for plugin loader."""
-import sys
 import os
-import textwrap
+import sys
 import tempfile
-import pytest
+import textwrap
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.plugins import PluginDefinition, load_plugins, get_plugin_nodes, get_plugin_routes
+from helpers.plugins import PluginDefinition, get_plugin_nodes, get_plugin_routes, load_plugins
 
 
 def _write_plugin(directory: Path, filename: str, content: str):

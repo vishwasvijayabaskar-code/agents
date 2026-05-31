@@ -6,8 +6,9 @@ Usage:
     timeout = cfg.get("executor", "timeout", 60)
 """
 import os
-import yaml
 from pathlib import Path
+
+import yaml
 
 _CONFIG_FILE = Path(__file__).parent.parent / "config.yaml"
 

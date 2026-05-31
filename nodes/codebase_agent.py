@@ -4,9 +4,9 @@ Semantically searches the ChromaDB-indexed codebase for relevant chunks,
 then uses an LLM to answer questions, explain code, or suggest changes.
 """
 
-from state import AgentState
-from helpers.llm import _call_stream
 from helpers.config import cfg
+from helpers.llm import _call_stream
+from state import AgentState
 from ui import console, print_agent_header
 
 

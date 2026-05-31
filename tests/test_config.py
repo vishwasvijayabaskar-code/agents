@@ -1,10 +1,11 @@
 """Tests for helpers/config.py — cfg singleton."""
-import sys
 import os
+import sys
 import tempfile
-import pytest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -37,6 +38,7 @@ SAMPLE_DATA = {
 def _make_cfg(data: dict = None) -> object:
     """Return a fresh _Config instance with pre-loaded data (no file I/O)."""
     import copy
+
     from helpers.config import _Config
     instance = _Config.__new__(_Config)
     instance._data = copy.deepcopy(data or SAMPLE_DATA)

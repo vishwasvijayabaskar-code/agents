@@ -1,6 +1,18 @@
-from langgraph.graph import StateGraph, END
-from nodes import orchestrator, coder, researcher, fast, codex, claude, executor, synthesizer, codebase_agent, route_decision
-from helpers.plugins import load_plugins, get_plugin_nodes, get_plugin_routes
+from langgraph.graph import END, StateGraph
+
+from helpers.plugins import get_plugin_nodes, get_plugin_routes, load_plugins
+from nodes import (
+    claude,
+    codebase_agent,
+    coder,
+    codex,
+    executor,
+    fast,
+    orchestrator,
+    researcher,
+    route_decision,
+    synthesizer,
+)
 from state import AgentState
 
 _BUILTIN_WORKERS = ("CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR", "CODEBASE")

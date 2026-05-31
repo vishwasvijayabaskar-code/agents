@@ -27,18 +27,39 @@ dependencies = [
     "uvicorn>=0.23",
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
+    "watchdog>=4.0",
+    "itsdangerous>=2.1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-mock>=3.14"]
+dev = ["pytest>=8.0", "pytest-mock>=3.14", "ruff>=0.6"]
 
 [project.scripts]
 agents = "main:repl"
 agents-web = "web.app:main"
 
 [tool.setuptools]
-packages = ["helpers", "nodes", "web", "plugins"]
-py-modules = ["main", "graph", "state", "ui", "mcp_server"]
+packages = ["helpers", "nodes", "web", "plugins", "evals"]
+py-modules = ["main", "graph", "state", "ui", "mcp_server", "watch"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = ["chroma", "output", "sessions", "__pycache__", ".venv", "evals/results"]
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle, I = isort, UP = pyupgrade, B = bugbear
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length handled by formatter, not enforced hard
+    "E402",  # module-level import not at top (main.py suppresses warnings before imports)
+    "B008",  # function call in default arg (FastAPI Depends/Form pattern)
+    "UP035", # deprecated typing imports — keep for older runtime compat
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811", "E731"]  # fixtures, re-imports, inline lambdas common in tests
+"__init__.py" = ["F401"]              # re-export modules deliberately import for namespace

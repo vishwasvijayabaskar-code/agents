@@ -1,12 +1,13 @@
 """Tests for helpers/search.py — no network calls."""
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.search import _strip_html, _format_search_results, _robots_allowed
+from helpers.search import _format_search_results, _robots_allowed, _strip_html
 
 
 class TestStripHtml:

@@ -1,10 +1,11 @@
 import os
 import threading
 from contextlib import contextmanager
+
 from litellm import completion
-from ui import console
+
 from helpers.usage import _log_usage
-from helpers.config import cfg
+from ui import console
 
 BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 

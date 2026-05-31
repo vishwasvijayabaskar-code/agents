@@ -1,11 +1,12 @@
-import re
 import json
-from state import AgentState
-from helpers.llm import _call
-from helpers.memory import _relevant_memory, _cache_lookup
-from helpers.plugins import get_plugin_routes, get_plugin_descriptions
-from helpers.delegation import parse_delegation, strip_delegation_tags, execute_delegation
+import re
+
 from helpers.config import cfg
+from helpers.delegation import execute_delegation, parse_delegation, strip_delegation_tags
+from helpers.llm import _call
+from helpers.memory import _cache_lookup, _relevant_memory
+from helpers.plugins import get_plugin_descriptions, get_plugin_routes
+from state import AgentState
 
 # --- Fast-path routing heuristics ---
 
@@ -374,7 +375,7 @@ def _worker_nodes() -> set[str]:
 def _get_delegation_targets() -> dict:
     """Return {name: node_fn} for agents that can be delegated to."""
     # Import lazily to avoid circular imports
-    from nodes import coder, researcher, fast, claude
+    from nodes import claude, coder, fast, researcher
     return {
         "CODER": coder,
         "RESEARCHER": researcher,

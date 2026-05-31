@@ -1,5 +1,6 @@
-import warnings
 import os
+import warnings
+
 warnings.simplefilter("ignore")
 # Must suppress before langgraph import — LangChainPendingDeprecationWarning bypasses -W ignore
 try:
@@ -8,19 +9,21 @@ try:
 except ImportError:
     pass
 
-import json
-import sys
 import argparse
+import json
 import pickle
+import sys
 from datetime import datetime
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from graph import build_graph
-from helpers import _load_project_context, _embed_memory, cfg
-from helpers.llm import token_budget, get_budget_used, TokenBudgetExceeded
-from ui import console, print_task_header, print_separator, print_agents_used, print_files, show_stats_table
+from helpers import _embed_memory, _load_project_context, cfg
+from helpers.llm import TokenBudgetExceeded, get_budget_used, token_budget
+from ui import console, print_agents_used, print_files, print_separator, print_task_header, show_stats_table
 
 OUTPUT_BASE = Path(__file__).parent / "output"
 SESSIONS_DIR = Path(__file__).parent / "sessions"

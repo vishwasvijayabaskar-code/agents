@@ -10,11 +10,11 @@ Usage:
     python3 evals/runner.py --dry-run        # validate checks without running agents
 """
 
-import sys
-import json
 import argparse
-from pathlib import Path
+import json
+import sys
 from datetime import datetime
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -24,7 +24,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 def _run_task(task_def: dict, dry_run: bool = False) -> dict:
     """Execute one eval task, return result dict."""
-    from evals.checkers import run_checks, all_passed
+    from evals.checkers import all_passed, run_checks
 
     task_id = task_def["id"]
     task_text = task_def["task"]
@@ -38,6 +38,7 @@ def _run_task(task_def: dict, dry_run: bool = False) -> dict:
 
     if not dry_run:
         import time
+
         from main import run as _run
         t0 = time.time()
         try:
@@ -85,9 +86,9 @@ def run_suite(
     dry_run: bool = False,
 ) -> dict:
     """Run the benchmark suite. Returns summary dict."""
-    from evals.suite import SUITE
     from rich.console import Console
-    from rich.table import Table
+
+    from evals.suite import SUITE
 
     console = Console()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -147,7 +148,7 @@ def run_suite(
     console.print(f"\n{'='*50}")
     console.print(f"Results: {passed}/{total} passed ({pass_rate}%)")
     if failed > 0:
-        console.print(f"[bold red]FAILED:[/bold red]")
+        console.print("[bold red]FAILED:[/bold red]")
         for r in results:
             if not r["passed"]:
                 reasons = [x["reason"] for x in r["checks"] if not x["passed"]]
@@ -187,7 +188,7 @@ def compare_runs():
         elif not prev["passed"] and cur["passed"]:
             improvements.append(task_id)
 
-    console.print(f"\n[bold]Comparing runs:[/bold]")
+    console.print("\n[bold]Comparing runs:[/bold]")
     console.print(f"  Previous: {previous['timestamp']}  {previous['passed']}/{previous['total']} ({previous['pass_rate']}%)")
     console.print(f"  Current:  {current['timestamp']}   {current['passed']}/{current['total']} ({current['pass_rate']}%)")
 

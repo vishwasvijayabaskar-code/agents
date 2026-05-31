@@ -11,10 +11,9 @@ Usage:
     ctx = idx.query("how does auth work?")  # returns relevant code context
 """
 
-import os
 import hashlib
+import os
 from pathlib import Path
-from typing import Optional
 
 # File extensions to index
 _INDEX_EXTS = {
@@ -91,7 +90,7 @@ def _chunk_file(content: str, file_path: str) -> list[dict]:
                 overlap_lines = current_chunk[-3:] if len(current_chunk) > 3 else current_chunk[:]
                 current_chunk = overlap_lines + [line]
                 current_start = max(1, i - len(overlap_lines))
-                chunk_chars = sum(len(l) for l in current_chunk)
+                chunk_chars = sum(len(ln) for ln in current_chunk)
             else:
                 current_chunk.append(line)
                 chunk_chars += len(line)
@@ -239,7 +238,7 @@ class CodebaseIndex:
             return ""
 
         parts = []
-        for doc, meta, dist in zip(docs, metas, distances):
+        for doc, meta, dist in zip(docs, metas, distances, strict=False):
             if dist > 1.5:  # very distant → skip
                 continue
             file_ref = f"{meta.get('file', '?')} (lines {meta.get('start_line', '?')}-{meta.get('end_line', '?')})"

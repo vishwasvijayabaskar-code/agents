@@ -12,11 +12,11 @@ Processed files → watch/done/
 Output → output/watched_<timestamp>/
 """
 
-import os
+import shutil
 import sys
 import time
-import shutil
 import warnings
+
 warnings.simplefilter("ignore")
 try:
     from langchain_core._api.deprecation import LangChainPendingDeprecationWarning
@@ -24,15 +24,16 @@ try:
 except ImportError:
     pass
 
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 try:
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
 except ImportError:
     print("watchdog not installed. Run: pip install watchdog")
     sys.exit(1)
@@ -84,7 +85,7 @@ def _detect_task(path: Path) -> tuple[str, str | None, str | None]:
     if ext == ".url":
         url = content.split("\n")[0].strip()
         if not url:
-            return f"Summarize content at this URL (file was empty)", None, None
+            return "Summarize content at this URL (file was empty)", None, None
         return f"Fetch and summarize this URL: {url}", "RESEARCHER", None
 
     # Code files → review

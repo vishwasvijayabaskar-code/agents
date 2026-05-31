@@ -1,21 +1,22 @@
-from typing import TypedDict, Optional
+from typing import TypedDict
+
 
 class AgentState(TypedDict):
     task: str
-    route: Optional[str]
-    result: Optional[str]
+    route: str | None
+    result: str | None
     history: list[str]
     iterations: int
     done: bool
     agent_outputs: dict[str, str]
-    output_dir: Optional[str]
+    output_dir: str | None
     memory: list[dict]
     session_history: list[dict]
-    project_context: Optional[str]
-    force_route: Optional[str]
+    project_context: str | None
+    force_route: str | None
     chat_messages: list[dict]
-    fanout_tasks: Optional[dict]
+    fanout_tasks: dict | None
     tokens_used: int
-    subtasks: Optional[list[dict]]
+    subtasks: list[dict] | None
     current_subtask: int
-    project_context_path: Optional[str]  # absolute path for CodebaseIndex
+    project_context_path: str | None  # absolute path for CodebaseIndex
