@@ -98,6 +98,16 @@ Expose agents as MCP tools for Claude Desktop or any MCP client.
 
 ## Quickstart
 
+### Fastest: one-liner installer
+
+```bash
+git clone https://github.com/vishwasvijayabaskar-code/agents.git
+cd agents && ./install.sh          # deps + minimum models + .env
+./run --doctor                     # verify everything
+```
+
+Or do it manually:
+
 ### 1. Install Ollama + pull models
 
 ```bash
