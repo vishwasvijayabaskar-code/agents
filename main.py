@@ -1,3 +1,4 @@
+# PYTHON_ARGCOMPLETE_OK
 import os
 import warnings
 
@@ -478,6 +479,14 @@ if __name__ == "__main__":
     parser.add_argument("--clear-cache", action="store_true", help="Clear vector memory / result cache and exit")
     parser.add_argument("--doctor", action="store_true", help="Diagnose environment (Ollama, models, config, keys)")
     parser.add_argument("--init", action="store_true", help="Scaffold .env + print model-pull commands")
+    # Optional shell completion (pip install argcomplete; see Makefile `completions`)
+    try:
+        import argcomplete
+
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
+
     args = parser.parse_args()
 
     if args.doctor:
