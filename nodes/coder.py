@@ -28,7 +28,7 @@ def coder(state: AgentState) -> AgentState:
         result = _call_stream(model, system, state["task"] + context, agent="CODER", messages=chat_msgs)
 
         if state.get("output_dir"):
-            written = _write_files(result, state["output_dir"])
+            written = _write_files(result, state["output_dir"] or "")
             if written:
                 result += f"\n\n[Files written to {state['output_dir']}: {', '.join(written)}]"
                 state["history"].append(f"Coder wrote: {written}")

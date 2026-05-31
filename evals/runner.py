@@ -108,7 +108,7 @@ def run_suite(
 
     console.print(f"\n[bold]Running {len(tasks)} eval task(s){'  [dry-run]' if dry_run else ''}[/bold]\n")
 
-    results = []
+    results: list[dict] = []
     passed = 0
     failed = 0
     out_file = RESULTS_DIR / f"{timestamp}.json"

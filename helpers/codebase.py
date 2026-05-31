@@ -14,6 +14,7 @@ Usage:
 import hashlib
 import os
 from pathlib import Path
+from typing import Any
 
 # File extensions to index
 _INDEX_EXTS = {
@@ -171,7 +172,7 @@ class CodebaseIndex:
     def __init__(self, project_path: str):
         self.project_path = str(Path(project_path).resolve())
         self._collection_name = _collection_name(self.project_path)
-        self._col = None
+        self._col: Any = None
 
     def _get_collection(self):
         if self._col is not None:

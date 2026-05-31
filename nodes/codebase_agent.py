@@ -21,7 +21,7 @@ def codebase_agent(state: AgentState) -> AgentState:
         if project_path:
             from helpers.codebase import CodebaseIndex
 
-            idx = CodebaseIndex(project_path)
+            idx = CodebaseIndex(str(project_path))
             if not idx.is_indexed():
                 console.print(f"[bold yellow]CODEBASE: indexing {project_path} (first run)...[/bold yellow]")
                 n = idx.index()

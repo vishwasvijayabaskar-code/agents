@@ -105,7 +105,7 @@ def show_stats():
         console.print("[info]No usage data yet.[/info]")
         return
     today = datetime.now().strftime("%Y-%m-%d")
-    totals = {}
+    totals: dict = {}
     with open(USAGE_FILE) as f:
         for line in f:
             try:
@@ -169,7 +169,7 @@ def run(
 
     max_tokens = cfg.get("limits", "max_tokens_per_task", 0)
 
-    state = {
+    state: dict = {
         "task": task,
         "route": None,
         "result": None,
@@ -239,7 +239,7 @@ def chat_mode(
 ):
     """Multi-turn conversation with a single agent. /done to exit."""
     console.print("[info]Chat mode — follow-ups stay with same agent. '/done' to exit.[/info]")
-    messages = []  # conversation history: [{"role": "user"|"assistant", "content": "..."}]
+    messages: list[dict] = []  # conversation history: [{"role": "user"|"assistant", "content": "..."}]
 
     task = initial_task
     while True:

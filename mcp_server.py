@@ -42,7 +42,6 @@ USAGE_FILE = BASE_DIR / "usage.jsonl"
 
 mcp = FastMCP(
     "agents",
-    version="1.0.0",
     instructions=(
         "Multi-agent AI system. Use run_task to execute tasks with automatic routing. "
         "Use search_memory to find past results. list_sessions shows saved conversations. "
@@ -123,7 +122,7 @@ def search_memory(query: str, top_k: int = 5) -> str:
     try:
         from helpers.memory import _relevant_memory
 
-        results = _relevant_memory(query, n_results=min(top_k, 20))
+        results = _relevant_memory(query, k=min(top_k, 20))
         if not results:
             return "No matching memories found."
         return results

@@ -299,7 +299,7 @@ def orchestrator(state: AgentState) -> AgentState:
                 node_map = _get_delegation_targets()
                 if target_agent in node_map:
                     state["history"].append(f"Orchestrator → delegation {agent_name}→{target_agent}: {query[:60]}")
-                    delegate_result = execute_delegation(target_agent, query, node_map[target_agent], state)
+                    delegate_result = execute_delegation(target_agent, query, node_map[target_agent], state)  # type: ignore[arg-type]
                     # Inject delegation result back and strip tags from original
                     clean_output = strip_delegation_tags(output)
                     state["agent_outputs"][agent_name] = (

@@ -17,7 +17,7 @@ def _build_prompt(state: AgentState) -> str:
         parts.append(ctx)
 
     if state.get("project_context"):
-        parts.append(state["project_context"])
+        parts.append(state["project_context"] or "")
 
     for agent, output in (state.get("agent_outputs") or {}).items():
         parts.append(f"\n[{agent} output]:\n{output[:800]}")

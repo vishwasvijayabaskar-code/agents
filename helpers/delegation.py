@@ -43,7 +43,7 @@ def execute_delegation(
     """Run a delegated task using the target agent's node function.
     Returns the delegated agent's output."""
     # Build a minimal sub-state for the delegated task
-    sub_state = {
+    sub_state: dict = {
         "task": query,
         "route": None,
         "result": None,

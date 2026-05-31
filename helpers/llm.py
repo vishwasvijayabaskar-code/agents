@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 
 from litellm import completion
@@ -64,7 +65,8 @@ def _completion_with_retry(**kwargs):
                 f"retry {attempt + 1}/{retries} in {delay:.1f}s[/yellow]"
             )
             time.sleep(delay)
-    raise last_exc  # unreachable, defensive
+    # Unreachable in practice; satisfies type checker that we always raise/return.
+    raise last_exc if last_exc else RuntimeError("completion failed with no exception")
 
 
 # Thread-local storage for streaming callback and token budget tracking.
@@ -143,7 +145,7 @@ def _call_stream(
     user: str,
     agent: str = "WORKER",
     messages: list[dict] | None = None,
-    token_callback: callable = None,
+    token_callback: Callable | None = None,
 ) -> str:
     """Stream tokens with rich display, return full text.
 

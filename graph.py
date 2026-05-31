@@ -58,7 +58,7 @@ def build_graph():
     for name in plugin_routes:
         route_map[name] = name
 
-    graph.add_conditional_edges("orchestrator", route_decision, route_map)
+    graph.add_conditional_edges("orchestrator", route_decision, route_map)  # type: ignore[arg-type]
 
     # All worker agents loop back for multi-hop decisions
     for node in _BUILTIN_WORKERS:

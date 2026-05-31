@@ -40,6 +40,9 @@ def load_plugins() -> dict[str, dict]:
             continue  # skip __init__.py etc.
         try:
             spec = importlib.util.spec_from_file_location(f"plugins.{path.stem}", path)
+            if spec is None or spec.loader is None:
+                print(f"[plugins] {path.name}: could not load module spec, skipping")
+                continue
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             if not hasattr(mod, "register"):

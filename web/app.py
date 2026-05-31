@@ -16,7 +16,7 @@ import secrets
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
@@ -173,11 +173,11 @@ async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
         err = json.dumps({"error": result_holder["error"]})
         yield f"event: error\ndata: {err}\n\n"
     else:
-        payload = {
+        result_payload = {
             "result": result_holder.get("result", ""),
             "agents": result_holder.get("agents", []),
         }
-        yield f"event: result\ndata: {json.dumps(payload)}\n\n"
+        yield f"event: result\ndata: {json.dumps(result_payload)}\n\n"
 
     yield "event: done\ndata: {}\n\n"
 
@@ -350,7 +350,7 @@ def _health_status() -> dict:
 
     base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
     configured = cfg.list_models()
-    status = {"ollama_reachable": False, "base": base, "models": {}}
+    status: dict[str, Any] = {"ollama_reachable": False, "base": base, "models": {}}
     try:
         req = urllib.request.Request(f"{base}/api/tags")
         with urllib.request.urlopen(req, timeout=3) as resp:
