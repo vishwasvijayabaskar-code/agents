@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   ollama:
     image: ollama/ollama:latest
@@ -7,6 +5,13 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     # GPU support (uncomment for NVIDIA):
     # deploy:
     #   resources:
@@ -28,11 +33,20 @@ services:
       - FAST_MODEL=${FAST_MODEL:-ollama/qwen2.5:7b}
       - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - WEB_AUTH_TOKEN=${WEB_AUTH_TOKEN:-}
+      - WEB_SECRET_KEY=${WEB_SECRET_KEY:-}
     volumes:
       - ./output:/app/output
       - ./sessions:/app/sessions
+    restart: unless-stopped
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
+
+# NOTE: pull models into the ollama volume before first use, e.g.:
+#   docker compose up -d ollama
+#   docker compose exec ollama ollama pull qwen2.5:7b
+#   docker compose exec ollama ollama pull qwen2.5-coder:32b
 
 volumes:
   ollama_data:

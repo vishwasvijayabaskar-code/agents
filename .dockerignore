@@ -1,0 +1,23 @@
+# Keep build context small + avoid baking runtime/secret data into the image
+.git
+.github
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.venv
+venv
+chroma/
+chroma_db/
+output/
+sessions/
+watch/
+*.pkl
+memory.json
+usage.jsonl
+.env
+evals/results/*.json
+demo.gif
+demo.tape
+*.md
+!README.md
