@@ -1,3 +1,5 @@
+# Multi-arch: build for arm64/amd64 with
+#   docker buildx build --platform linux/amd64,linux/arm64 -t agents .
 FROM python:3.11-slim
 
 WORKDIR /app
