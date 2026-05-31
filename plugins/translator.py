@@ -9,6 +9,7 @@ Usage:
     ./run "translate 'hello world' to Spanish"
     ./run --route TRANSLATOR "bonjour le monde → English"
 """
+
 from helpers.config import cfg
 from helpers.llm import _call_stream
 from helpers.plugins import PluginDefinition

@@ -17,6 +17,7 @@ Add to Claude Desktop config (~/.claude/claude_desktop_config.json):
   }
 }
 """
+
 import argparse
 import json
 import pickle
@@ -53,6 +54,7 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 # Tool: run_task
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool(
     description=(
@@ -100,6 +102,7 @@ def run_task(
 # Tool: search_memory
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool(
     description=(
         "Search past task results using semantic similarity (ChromaDB). "
@@ -119,6 +122,7 @@ def search_memory(query: str, top_k: int = 5) -> str:
     """
     try:
         from helpers.memory import _relevant_memory
+
         results = _relevant_memory(query, n_results=min(top_k, 20))
         if not results:
             return "No matching memories found."
@@ -131,10 +135,10 @@ def search_memory(query: str, top_k: int = 5) -> str:
 # Tool: list_sessions
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool(
     description=(
-        "List all saved REPL sessions. Returns session IDs, task counts, "
-        "and the most recent task in each session."
+        "List all saved REPL sessions. Returns session IDs, task counts, and the most recent task in each session."
     )
 )
 def list_sessions() -> str:
@@ -168,6 +172,7 @@ def list_sessions() -> str:
 # ---------------------------------------------------------------------------
 # Tool: get_stats
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool(
     description=(
@@ -213,9 +218,11 @@ def get_stats(date: str | None = None) -> str:
         p, c = counts["prompt"], counts["completion"]
         grand["prompt"] += p
         grand["completion"] += c
-        lines.append(f"{agent:<30} {p:>8,} {c:>10,} {p+c:>8,}")
+        lines.append(f"{agent:<30} {p:>8,} {c:>10,} {p + c:>8,}")
     lines.append("-" * 60)
-    lines.append(f"{'TOTAL':<30} {grand['prompt']:>8,} {grand['completion']:>10,} {grand['prompt']+grand['completion']:>8,}")
+    lines.append(
+        f"{'TOTAL':<30} {grand['prompt']:>8,} {grand['completion']:>10,} {grand['prompt'] + grand['completion']:>8,}"
+    )
 
     return "\n".join(lines)
 
@@ -224,9 +231,8 @@ def get_stats(date: str | None = None) -> str:
 # Tool: list_models
 # ---------------------------------------------------------------------------
 
-@mcp.tool(
-    description="List all currently configured models for each agent node."
-)
+
+@mcp.tool(description="List all currently configured models for each agent node.")
 def list_models() -> str:
     """Return current model assignments for all nodes."""
     models = cfg.list_models()

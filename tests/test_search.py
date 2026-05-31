@@ -1,4 +1,5 @@
 """Tests for helpers/search.py — no network calls."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch

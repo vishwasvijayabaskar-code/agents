@@ -1,4 +1,5 @@
 """Tests for web UI endpoints (Tasks 13-14)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -39,8 +40,10 @@ class TestHealthStatus:
         fake.read.return_value = b'{"models": [{"name": "qwen2.5:7b"}]}'
         fake.__enter__ = lambda s: fake
         fake.__exit__ = lambda s, *a: None
-        with patch("urllib.request.urlopen", return_value=fake), \
-             patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b", "claude": "claude-sonnet-4-6"}):
+        with (
+            patch("urllib.request.urlopen", return_value=fake),
+            patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b", "claude": "claude-sonnet-4-6"}),
+        ):
             status = _health_status()
         assert status["ollama_reachable"] is True
         assert status["models"]["fast"]["present"] is True
@@ -48,8 +51,10 @@ class TestHealthStatus:
         assert status["models"]["claude"]["present"] is True
 
     def test_ollama_unreachable(self):
-        with patch("urllib.request.urlopen", side_effect=OSError("refused")), \
-             patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}):
+        with (
+            patch("urllib.request.urlopen", side_effect=OSError("refused")),
+            patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}),
+        ):
             status = _health_status()
         assert status["ollama_reachable"] is False
         assert status["models"]["fast"]["present"] is False
@@ -59,8 +64,10 @@ class TestHealthStatus:
         fake.read.return_value = b'{"models": [{"name": "other:latest"}]}'
         fake.__enter__ = lambda s: fake
         fake.__exit__ = lambda s, *a: None
-        with patch("urllib.request.urlopen", return_value=fake), \
-             patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}):
+        with (
+            patch("urllib.request.urlopen", return_value=fake),
+            patch("web.app.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}),
+        ):
             status = _health_status()
         assert status["models"]["fast"]["present"] is False
 

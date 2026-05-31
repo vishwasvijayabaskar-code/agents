@@ -6,34 +6,38 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.theme import Theme
 
-theme = Theme({
-    "orchestrator": "bold cyan",
-    "coder":        "bold green",
-    "researcher":   "bold yellow",
-    "fast":         "bold blue",
-    "codex":        "bold magenta",
-    "claude":       "bold red",
-    "executor":     "bold white",
-    "info":         "dim white",
-    "result":       "white",
-    "separator":    "dim blue",
-})
+theme = Theme(
+    {
+        "orchestrator": "bold cyan",
+        "coder": "bold green",
+        "researcher": "bold yellow",
+        "fast": "bold blue",
+        "codex": "bold magenta",
+        "claude": "bold red",
+        "executor": "bold white",
+        "info": "dim white",
+        "result": "white",
+        "separator": "dim blue",
+    }
+)
 
 console = Console(theme=theme, highlight=False)
 
 AGENT_STYLES = {
     "ORCHESTRATOR": "orchestrator",
-    "CODER":        "coder",
-    "RESEARCHER":   "researcher",
-    "FAST":         "fast",
-    "CODEX":        "codex",
-    "CLAUDE":       "claude",
-    "EXECUTOR":     "executor",
+    "CODER": "coder",
+    "RESEARCHER": "researcher",
+    "FAST": "fast",
+    "CODEX": "codex",
+    "CLAUDE": "claude",
+    "EXECUTOR": "executor",
 }
+
 
 def print_task_header(task: str):
     console.print()
     console.print(Panel(f"[bold]{task}[/bold]", style="separator", expand=False))
+
 
 def print_agent_header(agent: str, model: str = ""):
     style = AGENT_STYLES.get(agent.upper(), "info")
@@ -43,21 +47,25 @@ def print_agent_header(agent: str, model: str = ""):
         label += f" [info]({short})[/info]"
     console.print(label)
 
+
 def print_separator():
     console.rule(style="separator")
+
 
 def print_agents_used(agents: list[str]):
     parts = [f"[{AGENT_STYLES.get(a.upper(), 'info')}]{a}[/{AGENT_STYLES.get(a.upper(), 'info')}]" for a in agents]
     console.print(f"\nAgents: {' → '.join(parts)}")
 
+
 def print_files(output_dir: str):
     console.print(f"[info]Files: {output_dir}[/info]")
 
+
 def render_markdown_code_blocks(text: str):
     """Print text, rendering code blocks with syntax highlighting."""
-    parts = re.split(r'(```\w*\n[\s\S]*?```)', text)
+    parts = re.split(r"(```\w*\n[\s\S]*?```)", text)
     for part in parts:
-        m = re.match(r'```(\w*)\n([\s\S]*?)```', part)
+        m = re.match(r"```(\w*)\n([\s\S]*?)```", part)
         if m:
             lang = m.group(1) or "text"
             code = m.group(2)
@@ -70,6 +78,7 @@ def render_markdown_code_blocks(text: str):
             if part.strip():
                 console.print(part, style="result")
 
+
 def show_stats_table(totals: dict, date: str):
     table = Table(title=f"Token Usage — {date}", style="separator")
     table.add_column("Agent (Model)", style="bold")
@@ -81,7 +90,7 @@ def show_stats_table(totals: dict, date: str):
         p, c = counts["prompt"], counts["completion"]
         grand_p += p
         grand_c += c
-        table.add_row(agent, f"{p:,}", f"{c:,}", f"{p+c:,}")
+        table.add_row(agent, f"{p:,}", f"{c:,}", f"{p + c:,}")
     table.add_section()
-    table.add_row("[bold]TOTAL[/bold]", f"{grand_p:,}", f"{grand_c:,}", f"{grand_p+grand_c:,}")
+    table.add_row("[bold]TOTAL[/bold]", f"{grand_p:,}", f"{grand_c:,}", f"{grand_p + grand_c:,}")
     console.print(table)

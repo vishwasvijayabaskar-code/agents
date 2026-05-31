@@ -17,18 +17,54 @@ from pathlib import Path
 
 # File extensions to index
 _INDEX_EXTS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".rs", ".go",
-    ".java", ".cpp", ".c", ".h", ".rb", ".php", ".swift",
-    ".kt", ".cs", ".md", ".txt", ".yaml", ".yml", ".toml",
-    ".json", ".sh", ".bash", ".zsh",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".rs",
+    ".go",
+    ".java",
+    ".cpp",
+    ".c",
+    ".h",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".cs",
+    ".md",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
+    ".sh",
+    ".bash",
+    ".zsh",
 }
 
 # Dirs / files to always skip
 _SKIP_DIRS = {
-    ".git", "__pycache__", "node_modules", ".venv", "venv",
-    "env", ".env", "dist", "build", ".next", "target",
-    ".cargo", "vendor", "chroma", ".pytest_cache", ".mypy_cache",
-    "coverage", ".coverage", "htmlcov",
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    "dist",
+    "build",
+    ".next",
+    "target",
+    ".cargo",
+    "vendor",
+    "chroma",
+    ".pytest_cache",
+    ".mypy_cache",
+    "coverage",
+    ".coverage",
+    "htmlcov",
 }
 
 # Max file size to index (skip large generated files)
@@ -74,18 +110,16 @@ def _chunk_file(content: str, file_path: str) -> list[dict]:
         chunk_chars = 0
 
         for i, line in enumerate(lines, 1):
-            is_boundary = (
-                line.startswith("def ") or
-                line.startswith("class ") or
-                line.startswith("async def ")
-            )
+            is_boundary = line.startswith("def ") or line.startswith("class ") or line.startswith("async def ")
             if is_boundary and chunk_chars > _CHUNK_SIZE // 2 and current_chunk:
-                chunks.append({
-                    "content": "".join(current_chunk),
-                    "file": file_path,
-                    "start_line": current_start,
-                    "end_line": i - 1,
-                })
+                chunks.append(
+                    {
+                        "content": "".join(current_chunk),
+                        "file": file_path,
+                        "start_line": current_start,
+                        "end_line": i - 1,
+                    }
+                )
                 # Overlap: keep last few lines
                 overlap_lines = current_chunk[-3:] if len(current_chunk) > 3 else current_chunk[:]
                 current_chunk = overlap_lines + [line]
@@ -96,12 +130,14 @@ def _chunk_file(content: str, file_path: str) -> list[dict]:
                 chunk_chars += len(line)
 
         if current_chunk:
-            chunks.append({
-                "content": "".join(current_chunk),
-                "file": file_path,
-                "start_line": current_start,
-                "end_line": len(lines),
-            })
+            chunks.append(
+                {
+                    "content": "".join(current_chunk),
+                    "file": file_path,
+                    "start_line": current_start,
+                    "end_line": len(lines),
+                }
+            )
         return chunks
 
     # For other files: fixed-size character chunking with overlap
@@ -114,12 +150,14 @@ def _chunk_file(content: str, file_path: str) -> list[dict]:
         # Count newlines for rough line number tracking
         start_line = line_num
         line_num += chunk_text.count("\n")
-        chunks.append({
-            "content": chunk_text,
-            "file": file_path,
-            "start_line": start_line,
-            "end_line": start_line + chunk_text.count("\n"),
-        })
+        chunks.append(
+            {
+                "content": chunk_text,
+                "file": file_path,
+                "start_line": start_line,
+                "end_line": start_line + chunk_text.count("\n"),
+            }
+        )
         pos += _CHUNK_SIZE - _CHUNK_OVERLAP
         if pos >= len(text):
             break
@@ -140,6 +178,7 @@ class CodebaseIndex:
             return self._col
         try:
             import chromadb
+
             client = chromadb.PersistentClient(path=_CHROMA_DIR)
             self._col = client.get_or_create_collection(self._collection_name)
         except Exception:
@@ -164,6 +203,7 @@ class CodebaseIndex:
         if force:
             try:
                 import chromadb
+
                 client = chromadb.PersistentClient(path=_CHROMA_DIR)
                 client.delete_collection(self._collection_name)
                 self._col = client.get_or_create_collection(self._collection_name)
@@ -189,12 +229,14 @@ class CodebaseIndex:
                 chunk_id = hashlib.md5(f"{rel_path}:{i}".encode()).hexdigest()
                 all_docs.append(chunk["content"])
                 all_ids.append(chunk_id)
-                all_meta.append({
-                    "file": chunk["file"],
-                    "start_line": chunk["start_line"],
-                    "end_line": chunk["end_line"],
-                    "project": self.project_path,
-                })
+                all_meta.append(
+                    {
+                        "file": chunk["file"],
+                        "start_line": chunk["start_line"],
+                        "end_line": chunk["end_line"],
+                        "project": self.project_path,
+                    }
+                )
 
         if not all_docs:
             return 0
@@ -204,9 +246,9 @@ class CodebaseIndex:
         for i in range(0, len(all_docs), batch_size):
             try:
                 col.upsert(
-                    documents=all_docs[i:i+batch_size],
-                    ids=all_ids[i:i+batch_size],
-                    metadatas=all_meta[i:i+batch_size],
+                    documents=all_docs[i : i + batch_size],
+                    ids=all_ids[i : i + batch_size],
+                    metadatas=all_meta[i : i + batch_size],
                 )
             except Exception:
                 pass

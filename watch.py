@@ -20,6 +20,7 @@ import warnings
 warnings.simplefilter("ignore")
 try:
     from langchain_core._api.deprecation import LangChainPendingDeprecationWarning
+
     warnings.filterwarnings("ignore", category=LangChainPendingDeprecationWarning)
 except ImportError:
     pass
@@ -48,8 +49,7 @@ DONE_DIR = WATCH_DIR / "done"
 OUTPUT_BASE = Path(__file__).parent / "output"
 
 # Extensions treated as code files → review task
-_CODE_EXTS = {".py", ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java",
-              ".cpp", ".c", ".rb", ".php", ".swift", ".kt"}
+_CODE_EXTS = {".py", ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java", ".cpp", ".c", ".rb", ".php", ".swift", ".kt"}
 
 # Debounce: ignore files modified within N seconds of creation (partial writes)
 _DEBOUNCE_SECS = 1.0
@@ -67,10 +67,12 @@ def _detect_task(path: Path) -> tuple[str, str | None, str | None]:
     if ext == ".task":
         try:
             import yaml
+
             data = yaml.safe_load(content)
         except Exception:
             try:
                 import json
+
                 data = json.loads(content)
             except Exception:
                 data = {}
@@ -91,16 +93,30 @@ def _detect_task(path: Path) -> tuple[str, str | None, str | None]:
     # Code files → review
     if ext in _CODE_EXTS:
         _LANG_NAMES = {
-            ".py": "python", ".js": "javascript", ".ts": "typescript",
-            ".jsx": "jsx", ".tsx": "tsx", ".rs": "rust", ".go": "go",
-            ".java": "java", ".cpp": "cpp", ".c": "c", ".rb": "ruby",
-            ".php": "php", ".swift": "swift", ".kt": "kotlin",
+            ".py": "python",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".jsx": "jsx",
+            ".tsx": "tsx",
+            ".rs": "rust",
+            ".go": "go",
+            ".java": "java",
+            ".cpp": "cpp",
+            ".c": "c",
+            ".rb": "ruby",
+            ".php": "php",
+            ".swift": "swift",
+            ".kt": "kotlin",
         }
         lang = _LANG_NAMES.get(ext, ext.lstrip("."))
         return (
-            f"Review this {lang} code. Identify bugs, improvements, and security issues. "
-            f"Provide specific fixes.\n\n```{lang}\n{content}\n```"
-        ), "CODER", None
+            (
+                f"Review this {lang} code. Identify bugs, improvements, and security issues. "
+                f"Provide specific fixes.\n\n```{lang}\n{content}\n```"
+            ),
+            "CODER",
+            None,
+        )
 
     # .txt / .md / anything else → raw task text
     return content, None, None
@@ -209,8 +225,7 @@ def watch(directory: Path | None = None, once: bool = False):
     DONE_DIR.mkdir(parents=True, exist_ok=True)
 
     # Process any files already sitting in watch/ on startup
-    existing = [f for f in watch_dir.iterdir()
-                if f.is_file() and not f.name.startswith(".")]
+    existing = [f for f in watch_dir.iterdir() if f.is_file() and not f.name.startswith(".")]
     if existing:
         console.print(f"[info]Processing {len(existing)} existing file(s)...[/info]")
         for f in existing:
@@ -218,17 +233,19 @@ def watch(directory: Path | None = None, once: bool = False):
         if once:
             return
 
-    console.print(Panel(
-        f"[bold green]Watching {watch_dir}[/bold green]\n"
-        "Drop files to process:\n"
-        "  .txt / .md    → plain task text\n"
-        "  .task         → YAML: {task, route, project}\n"
-        "  .url          → fetch + summarize URL\n"
-        "  .py .js .ts   → code review\n"
-        "\nCtrl+C to stop",
-        title="agents / watch mode",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            f"[bold green]Watching {watch_dir}[/bold green]\n"
+            "Drop files to process:\n"
+            "  .txt / .md    → plain task text\n"
+            "  .task         → YAML: {task, route, project}\n"
+            "  .url          → fetch + summarize URL\n"
+            "  .py .js .ts   → code review\n"
+            "\nCtrl+C to stop",
+            title="agents / watch mode",
+            expand=False,
+        )
+    )
 
     handler = _WatchHandler()
     observer = Observer()
@@ -246,6 +263,7 @@ def watch(directory: Path | None = None, once: bool = False):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="File-watcher mode — drop files, agents process them")
     parser.add_argument("--dir", "-d", help="Directory to watch (default: ./watch/)")
     parser.add_argument("--once", action="store_true", help="Process existing files and exit (no daemon)")

@@ -1,4 +1,5 @@
 """Tests for task decomposition (Tier 8B)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -26,7 +27,9 @@ class TestIsMultiHop:
         assert _is_multi_hop("write a very detailed comprehensive essay about quantum mechanics") is False
 
     def test_with_first_keyword(self):
-        assert _is_multi_hop("first research Python best practices, then write a web scraper using those patterns") is True
+        assert (
+            _is_multi_hop("first research Python best practices, then write a web scraper using those patterns") is True
+        )
 
     def test_with_step_keywords(self):
         assert _is_multi_hop("step 1: research the API documentation, step 2: build a client library for it") is True
@@ -67,7 +70,9 @@ class TestDecomposeTask:
         assert len(result) == 4
 
     def test_strips_think_tags(self):
-        mock_response = '<think>let me think...</think>[{"route": "RESEARCHER", "task": "r"}, {"route": "CODER", "task": "c"}]'
+        mock_response = (
+            '<think>let me think...</think>[{"route": "RESEARCHER", "task": "r"}, {"route": "CODER", "task": "c"}]'
+        )
         with patch("nodes.orchestrator._call", return_value=mock_response):
             result = _decompose_task("research then code", "model")
         assert result is not None
@@ -82,8 +87,10 @@ class TestSubtaskExecution:
             {"route": "RESEARCHER", "task": "research Python frameworks"},
             {"route": "CODER", "task": "build REST API"},
         ]
-        with patch("nodes.orchestrator._decompose_task", return_value=subtasks), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._decompose_task", return_value=subtasks),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             result = orchestrator(state)
 
         assert result["subtasks"] is not None
@@ -136,9 +143,11 @@ class TestSubtaskExecution:
         """If decomposition fails, falls through to normal LLM routing."""
         task = "research the latest frameworks and then build something with them"
         state = make_state(task=task, iterations=0)
-        with patch("nodes.orchestrator._decompose_task", return_value=None), \
-             patch("nodes.orchestrator._call", return_value='{"route": "RESEARCHER", "done": false}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._decompose_task", return_value=None),
+            patch("nodes.orchestrator._call", return_value='{"route": "RESEARCHER", "done": false}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             result = orchestrator(state)
 
         assert result.get("subtasks") is None

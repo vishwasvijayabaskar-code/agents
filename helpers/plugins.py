@@ -1,4 +1,5 @@
 """Plugin loader — scans plugins/ directory and registers custom agents."""
+
 import importlib.util
 from pathlib import Path
 from typing import Callable

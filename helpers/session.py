@@ -1,10 +1,26 @@
 from state import AgentState
 
-_ANAPHORA = ("it", "this", "that", "them", "the app", "the project", "the code", "add to", "extend", "update", "modify", "fix it", "improve it")
+_ANAPHORA = (
+    "it",
+    "this",
+    "that",
+    "them",
+    "the app",
+    "the project",
+    "the code",
+    "add to",
+    "extend",
+    "update",
+    "modify",
+    "fix it",
+    "improve it",
+)
+
 
 def _references_previous(task: str) -> bool:
     t = task.lower()
     return any(t.startswith(w) or f" {w}" in t for w in _ANAPHORA)
+
 
 def _session_ctx(state: AgentState) -> str:
     history = state.get("session_history") or []

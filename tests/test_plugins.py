@@ -1,4 +1,5 @@
 """Tests for plugin loader."""
+
 import os
 import sys
 import tempfile
@@ -31,7 +32,10 @@ class TestPluginDefinition:
 
 class TestLoadPlugins:
     def test_loads_valid_plugin(self, tmp_path):
-        _write_plugin(tmp_path, "myplugin.py", """
+        _write_plugin(
+            tmp_path,
+            "myplugin.py",
+            """
             from helpers.plugins import PluginDefinition
 
             def my_node(state):
@@ -39,7 +43,8 @@ class TestLoadPlugins:
 
             def register():
                 return PluginDefinition(name="MYPLUGIN", node_fn=my_node, description="test plugin")
-        """)
+        """,
+        )
 
         with patch("helpers.plugins.PLUGINS_DIR", tmp_path):
             loaded = load_plugins()
@@ -56,7 +61,11 @@ class TestLoadPlugins:
         assert "NOOP" not in loaded
 
     def test_skips_dunder_files(self, tmp_path):
-        _write_plugin(tmp_path, "__init__.py", "from helpers.plugins import PluginDefinition\ndef register(): return PluginDefinition('X', lambda s: s)\n")
+        _write_plugin(
+            tmp_path,
+            "__init__.py",
+            "from helpers.plugins import PluginDefinition\ndef register(): return PluginDefinition('X', lambda s: s)\n",
+        )
 
         with patch("helpers.plugins.PLUGINS_DIR", tmp_path):
             loaded = load_plugins()

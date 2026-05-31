@@ -12,9 +12,19 @@ BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 
 # Substrings signalling a transient error worth retrying (connection/timeout/5xx).
 _TRANSIENT_SIGNALS = (
-    "connection", "timeout", "timed out", "refused", "reset",
-    "temporarily", "overloaded", "503", "502", "504",
-    "internalserver", "apiconnection", "service unavailable",
+    "connection",
+    "timeout",
+    "timed out",
+    "refused",
+    "reset",
+    "temporarily",
+    "overloaded",
+    "503",
+    "502",
+    "504",
+    "internalserver",
+    "apiconnection",
+    "service unavailable",
 )
 
 
@@ -22,6 +32,7 @@ def _retry_count() -> int:
     """Number of retries on transient LLM errors (config limits.llm_retries, default 2)."""
     try:
         from helpers.config import cfg
+
         return max(0, int(cfg.get("limits", "llm_retries", 2)))
     except Exception:
         return 2
@@ -47,7 +58,7 @@ def _completion_with_retry(**kwargs):
             last_exc = e
             if not _is_transient(e) or attempt == retries:
                 raise
-            delay = 0.5 * (2 ** attempt)  # 0.5s, 1s, 2s, ...
+            delay = 0.5 * (2**attempt)  # 0.5s, 1s, 2s, ...
             console.print(
                 f"[yellow]LLM transient error ({type(e).__name__}); "
                 f"retry {attempt + 1}/{retries} in {delay:.1f}s[/yellow]"
@@ -55,12 +66,14 @@ def _completion_with_retry(**kwargs):
             time.sleep(delay)
     raise last_exc  # unreachable, defensive
 
+
 # Thread-local storage for streaming callback and token budget tracking.
 _stream_ctx = threading.local()
 
 
 class TokenBudgetExceeded(Exception):
     """Raised when a task exceeds its token budget."""
+
     pass
 
 
@@ -89,24 +102,23 @@ def token_budget(max_tokens: int = 0):
 
 def get_budget_used() -> int:
     """Return tokens consumed in current budget scope."""
-    return getattr(_stream_ctx, 'budget_used', 0)
+    return getattr(_stream_ctx, "budget_used", 0)
 
 
 def _check_budget():
     """Raise TokenBudgetExceeded if budget is set and exceeded."""
-    budget = getattr(_stream_ctx, 'budget', 0)
+    budget = getattr(_stream_ctx, "budget", 0)
     if budget > 0:
-        used = getattr(_stream_ctx, 'budget_used', 0)
+        used = getattr(_stream_ctx, "budget_used", 0)
         if used >= budget:
-            raise TokenBudgetExceeded(
-                f"Token budget exceeded: {used}/{budget} tokens used"
-            )
+            raise TokenBudgetExceeded(f"Token budget exceeded: {used}/{budget} tokens used")
 
 
 def _track_tokens(prompt_tokens: int, completion_tokens: int):
     """Add tokens to budget counter."""
-    if getattr(_stream_ctx, 'budget', 0) > 0:
-        _stream_ctx.budget_used = getattr(_stream_ctx, 'budget_used', 0) + prompt_tokens + completion_tokens
+    if getattr(_stream_ctx, "budget", 0) > 0:
+        _stream_ctx.budget_used = getattr(_stream_ctx, "budget_used", 0) + prompt_tokens + completion_tokens
+
 
 def _call(model: str, system: str, user: str, agent: str = "ORCHESTRATOR") -> str:
     _check_budget()
@@ -145,7 +157,7 @@ def _call_stream(
 
     # Use explicit callback or fall back to thread-local (web UI injects this)
     if token_callback is None:
-        token_callback = getattr(_stream_ctx, 'callback', None)
+        token_callback = getattr(_stream_ctx, "callback", None)
 
     full_text = ""
     usage = None
@@ -169,7 +181,7 @@ def _call_stream(
         full_text += delta
         if token_callback and delta:
             token_callback(delta)
-        if hasattr(chunk, 'usage') and chunk.usage:
+        if hasattr(chunk, "usage") and chunk.usage:
             usage = chunk.usage
     console.print()
     if usage:

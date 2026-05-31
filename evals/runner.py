@@ -40,6 +40,7 @@ def _run_task(task_def: dict, dry_run: bool = False) -> dict:
         import time
 
         from main import run as _run
+
         t0 = time.time()
         try:
             result = _run(task=task_text, force_route=route)
@@ -58,11 +59,12 @@ def _run_task(task_def: dict, dry_run: bool = False) -> dict:
     if min_score > 0 and not dry_run and output:
         try:
             from nodes.orchestrator import _score_output
+
             llm_score = _score_output(task_text, output)
         except Exception:
             llm_score = None
 
-    score_passed = (llm_score is None or llm_score >= min_score)
+    score_passed = llm_score is None or llm_score >= min_score
     overall_passed = checks_passed and score_passed and (error is None)
 
     return {
@@ -116,15 +118,20 @@ def run_suite(
         if dry_run:
             return
         total = passed + failed
-        out_file.write_text(json.dumps({
-            "timestamp": timestamp,
-            "total": total,
-            "passed": passed,
-            "failed": failed,
-            "pass_rate": round(passed / total * 100) if total else 0,
-            "partial": partial,
-            "results": results,
-        }, indent=2))
+        out_file.write_text(
+            json.dumps(
+                {
+                    "timestamp": timestamp,
+                    "total": total,
+                    "passed": passed,
+                    "failed": failed,
+                    "pass_rate": round(passed / total * 100) if total else 0,
+                    "partial": partial,
+                    "results": results,
+                },
+                indent=2,
+            )
+        )
 
     for task_def in tasks:
         console.print(f"  [cyan]{task_def['id']}[/cyan]  {task_def['task'][:60]}...")
@@ -133,22 +140,32 @@ def run_suite(
             result = _run_task(task_def, dry_run=dry_run)
         except Exception as e:
             result = {
-                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
-                "passed": False, "checks": [{"type": "runner", "passed": False, "reason": f"runner crash: {e}"}],
-                "llm_score": None, "min_score": task_def.get("min_score", 0),
-                "output_preview": "", "error": str(e), "elapsed_secs": 0.0,
+                "id": task_def["id"],
+                "task": task_def["task"],
+                "route": task_def.get("route"),
+                "passed": False,
+                "checks": [{"type": "runner", "passed": False, "reason": f"runner crash: {e}"}],
+                "llm_score": None,
+                "min_score": task_def.get("min_score", 0),
+                "output_preview": "",
+                "error": str(e),
+                "elapsed_secs": 0.0,
                 "tags": task_def.get("tags", []),
             }
         results.append(result)
         if result["passed"]:
             passed += 1
-            console.print(f"    [green]✓ PASS[/green]  {result['elapsed_secs']}s"
-                          + (f"  score={result['llm_score']}" if result['llm_score'] else ""))
+            console.print(
+                f"    [green]✓ PASS[/green]  {result['elapsed_secs']}s"
+                + (f"  score={result['llm_score']}" if result["llm_score"] else "")
+            )
         else:
             failed += 1
             reasons = [r["reason"] for r in result["checks"] if not r["passed"]]
-            console.print(f"    [red]✗ FAIL[/red]  {'; '.join(reasons)}"
-                          + (f"  score={result['llm_score']}/{result['min_score']}" if result['llm_score'] else ""))
+            console.print(
+                f"    [red]✗ FAIL[/red]  {'; '.join(reasons)}"
+                + (f"  score={result['llm_score']}/{result['min_score']}" if result["llm_score"] else "")
+            )
             if result["error"]:
                 console.print(f"    [red]   Error: {result['error'][:80]}[/red]")
         # Persist after every task — partial results survive an external kill
@@ -172,7 +189,7 @@ def run_suite(
         console.print(f"\n[info]Results saved: {out_file}[/info]")
 
     # Print summary table
-    console.print(f"\n{'='*50}")
+    console.print(f"\n{'=' * 50}")
     console.print(f"Results: {passed}/{total} passed ({pass_rate}%)")
     if failed > 0:
         console.print("[bold red]FAILED:[/bold red]")
@@ -180,7 +197,7 @@ def run_suite(
             if not r["passed"]:
                 reasons = [x["reason"] for x in r["checks"] if not x["passed"]]
                 console.print(f"  • {r['id']}: {'; '.join(reasons)}")
-    console.print(f"{'='*50}\n")
+    console.print(f"{'=' * 50}\n")
 
     return summary
 
@@ -188,6 +205,7 @@ def run_suite(
 def compare_runs():
     """Compare the two most recent eval runs and highlight regressions."""
     from rich.console import Console
+
     console = Console()
 
     runs = sorted(RESULTS_DIR.glob("*.json"), reverse=True)
@@ -216,8 +234,12 @@ def compare_runs():
             improvements.append(task_id)
 
     console.print("\n[bold]Comparing runs:[/bold]")
-    console.print(f"  Previous: {previous['timestamp']}  {previous['passed']}/{previous['total']} ({previous['pass_rate']}%)")
-    console.print(f"  Current:  {current['timestamp']}   {current['passed']}/{current['total']} ({current['pass_rate']}%)")
+    console.print(
+        f"  Previous: {previous['timestamp']}  {previous['passed']}/{previous['total']} ({previous['pass_rate']}%)"
+    )
+    console.print(
+        f"  Current:  {current['timestamp']}   {current['passed']}/{current['total']} ({current['pass_rate']}%)"
+    )
 
     if regressions:
         console.print(f"\n[bold red]REGRESSIONS ({len(regressions)}):[/bold red]")
@@ -253,7 +275,8 @@ if __name__ == "__main__":
         compare_runs()
     elif args.list:
         from evals.suite import SUITE
+
         for t in SUITE:
-            print(f"  {t['id']:35}  {','.join(t.get('tags',[]))}  {t['task'][:60]}")
+            print(f"  {t['id']:35}  {','.join(t.get('tags', []))}  {t['task'][:60]}")
     else:
         run_suite(tags=args.tags, task_id=args.task_id, dry_run=args.dry_run)

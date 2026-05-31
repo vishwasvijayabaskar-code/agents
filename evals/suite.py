@@ -40,7 +40,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["fast", "explanation"],
     },
-
     # ----------------------------- CODER agent ---
     {
         "id": "coder_fibonacci",
@@ -68,7 +67,7 @@ SUITE: list[dict] = [
     },
     {
         "id": "coder_rest_api",
-        "task": "Write a minimal FastAPI endpoint that returns {\"status\": \"ok\"} at GET /health",
+        "task": 'Write a minimal FastAPI endpoint that returns {"status": "ok"} at GET /health',
         "route": "CODER",
         "checks": [
             {"type": "contains_code"},
@@ -90,7 +89,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["coder", "python", "data-structures"],
     },
-
     # ----------------------------- Routing ---
     {
         "id": "route_code_task",
@@ -114,7 +112,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["routing", "fast"],
     },
-
     # ----------------------------- Quality ---
     {
         "id": "quality_explanation",
@@ -140,7 +137,6 @@ SUITE: list[dict] = [
         "min_score": 6,
         "tags": ["coder", "quality", "python"],
     },
-
     # ----------------------------- More FAST ---
     {
         "id": "fast_boolean",
@@ -161,7 +157,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["fast", "explanation"],
     },
-
     # ----------------------------- More CODER ---
     {
         "id": "coder_sql_query",
@@ -209,7 +204,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["coder", "docker"],
     },
-
     # ----------------------------- More routing ---
     {
         "id": "route_explanation_task",
@@ -222,7 +216,6 @@ SUITE: list[dict] = [
         "min_score": 0,
         "tags": ["routing", "explanation"],
     },
-
     # ----------------------------- More quality ---
     {
         "id": "quality_tradeoffs",

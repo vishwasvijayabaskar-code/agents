@@ -1,4 +1,5 @@
 """Convenience launcher for the web UI. Runs on http://localhost:8000"""
+
 import argparse
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 if __name__ == "__main__":
     import uvicorn
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="agents web UI")

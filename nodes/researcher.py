@@ -11,6 +11,7 @@ from ui import console, print_agent_header
 def _summarize_page(content: str, task: str) -> str:
     """Compress fetched page content to ~500 chars using fast model."""
     from helpers.llm import _call
+
     fast_model = cfg.model("fast")
     system = "Summarize this web page content in 2-3 sentences. Keep only information relevant to the user's task. Be concise."
     user = f"Task: {task}\n\nPage content:\n{content[:3000]}"
@@ -24,13 +25,13 @@ def _pick_urls_to_fetch(results: list[dict], task: str, max_fetch: int) -> list[
     """Pick top-N URLs from results most relevant to task."""
     if not results or max_fetch == 0:
         return []
-    task_words = set(re.findall(r'\w+', task.lower()))
+    task_words = set(re.findall(r"\w+", task.lower()))
     scored = []
     for r in results:
-        title_words = set(re.findall(r'\w+', (r.get('title') or '').lower()))
+        title_words = set(re.findall(r"\w+", (r.get("title") or "").lower()))
         score = len(title_words & task_words)
-        url = r.get('href') or r.get('url') or ''
-        if url and url.startswith('http'):
+        url = r.get("href") or r.get("url") or ""
+        if url and url.startswith("http"):
             scored.append((score, url))
     scored.sort(reverse=True)
     return [url for _, url in scored[:max_fetch]]
@@ -65,11 +66,7 @@ def researcher(state: AgentState) -> AgentState:
 
         system = "You are a deep research and analysis expert. Think step by step. Use the web search results and page content as grounding. Give structured, detailed output."
         proj = f"\n\n{state['project_context']}" if state.get("project_context") else ""
-        user = (
-            f"Task: {state['task']}{_session_ctx(state)}{proj}"
-            f"\n\nWeb search results:\n{search_text}"
-            f"{page_content}"
-        )
+        user = f"Task: {state['task']}{_session_ctx(state)}{proj}\n\nWeb search results:\n{search_text}{page_content}"
         print_agent_header("RESEARCHER", model)
         result = _call_stream(model, system, user, agent="RESEARCHER")
 

@@ -1,4 +1,5 @@
 """Tests for LLM retry/backoff (Task 8)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -28,6 +29,7 @@ class TestIsTransient:
     def test_apiconnection_classname_transient(self):
         class APIConnectionError(Exception):
             pass
+
         assert _is_transient(APIConnectionError("boom"))
 
     def test_value_error_not_transient(self):
@@ -53,8 +55,10 @@ class TestRetryCount:
 
 class TestCompletionWithRetry:
     def test_succeeds_first_try(self):
-        with patch("helpers.llm.completion", return_value="ok") as mock_c, \
-             patch("helpers.llm._retry_count", return_value=2):
+        with (
+            patch("helpers.llm.completion", return_value="ok") as mock_c,
+            patch("helpers.llm._retry_count", return_value=2),
+        ):
             result = _completion_with_retry(model="x")
         assert result == "ok"
         assert mock_c.call_count == 1
@@ -68,33 +72,41 @@ class TestCompletionWithRetry:
                 raise r
             return r
 
-        with patch("helpers.llm.completion", side_effect=side_effect), \
-             patch("helpers.llm._retry_count", return_value=2), \
-             patch("helpers.llm.time.sleep"):
+        with (
+            patch("helpers.llm.completion", side_effect=side_effect),
+            patch("helpers.llm._retry_count", return_value=2),
+            patch("helpers.llm.time.sleep"),
+        ):
             result = _completion_with_retry(model="x")
         assert result == "recovered"
 
     def test_exhausts_retries_and_raises(self):
-        with patch("helpers.llm.completion", side_effect=Exception("connection refused")) as mock_c, \
-             patch("helpers.llm._retry_count", return_value=2), \
-             patch("helpers.llm.time.sleep"):
+        with (
+            patch("helpers.llm.completion", side_effect=Exception("connection refused")) as mock_c,
+            patch("helpers.llm._retry_count", return_value=2),
+            patch("helpers.llm.time.sleep"),
+        ):
             with pytest.raises(Exception, match="connection refused"):
                 _completion_with_retry(model="x")
         # initial + 2 retries = 3 attempts
         assert mock_c.call_count == 3
 
     def test_non_transient_no_retry(self):
-        with patch("helpers.llm.completion", side_effect=ValueError("bad")) as mock_c, \
-             patch("helpers.llm._retry_count", return_value=3), \
-             patch("helpers.llm.time.sleep"):
+        with (
+            patch("helpers.llm.completion", side_effect=ValueError("bad")) as mock_c,
+            patch("helpers.llm._retry_count", return_value=3),
+            patch("helpers.llm.time.sleep"),
+        ):
             with pytest.raises(ValueError):
                 _completion_with_retry(model="x")
         assert mock_c.call_count == 1  # no retry on non-transient
 
     def test_zero_retries_single_attempt(self):
-        with patch("helpers.llm.completion", side_effect=TimeoutError("timeout")) as mock_c, \
-             patch("helpers.llm._retry_count", return_value=0), \
-             patch("helpers.llm.time.sleep"):
+        with (
+            patch("helpers.llm.completion", side_effect=TimeoutError("timeout")) as mock_c,
+            patch("helpers.llm._retry_count", return_value=0),
+            patch("helpers.llm.time.sleep"),
+        ):
             with pytest.raises(TimeoutError):
                 _completion_with_retry(model="x")
         assert mock_c.call_count == 1

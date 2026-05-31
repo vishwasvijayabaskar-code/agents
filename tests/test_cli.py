@@ -1,4 +1,5 @@
 """Tests for CLI helpers: --version, --list-agents, --verbose (Tasks 10-12)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -20,6 +21,7 @@ class TestVersion:
         # When importlib.metadata can't find the package, falls back to __version__
         with patch("importlib.metadata.version", side_effect=Exception("not installed")):
             import main
+
             assert get_version() == main.__version__
 
 

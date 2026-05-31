@@ -1,4 +1,5 @@
 """Tests for agent-to-agent delegation (Tier 8D)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -13,7 +14,9 @@ from tests.conftest import make_state
 
 class TestParseDelegation:
     def test_valid_delegation(self):
-        output = 'I need more info. <delegate agent="RESEARCHER">look up Python asyncio docs</delegate> Let me continue.'
+        output = (
+            'I need more info. <delegate agent="RESEARCHER">look up Python asyncio docs</delegate> Let me continue.'
+        )
         result = parse_delegation(output)
         assert result is not None
         agent, query = result
@@ -88,16 +91,20 @@ class TestDelegationIntegration:
             agent_outputs={"CODER": coder_output},
         )
 
-        mock_researcher = MagicMock(return_value={
-            "result": "Flask docs: use @app.route to define endpoints",
-            "agent_outputs": {"RESEARCHER": "Flask docs info"},
-        })
+        mock_researcher = MagicMock(
+            return_value={
+                "result": "Flask docs: use @app.route to define endpoints",
+                "agent_outputs": {"RESEARCHER": "Flask docs info"},
+            }
+        )
 
-        with patch("nodes.orchestrator._get_delegation_targets", return_value={"RESEARCHER": mock_researcher}), \
-             patch("nodes.orchestrator._score_output", return_value=7), \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""), \
-             patch("nodes.orchestrator._cache_lookup", return_value=None):
+        with (
+            patch("nodes.orchestrator._get_delegation_targets", return_value={"RESEARCHER": mock_researcher}),
+            patch("nodes.orchestrator._score_output", return_value=7),
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+            patch("nodes.orchestrator._cache_lookup", return_value=None),
+        ):
             result = orchestrator(state)
 
         assert any("delegation" in h for h in result["history"])
@@ -116,10 +123,12 @@ class TestDelegationIntegration:
             history=["Orchestrator → delegation CODER→RESEARCHER: look up docs"],
         )
 
-        with patch("nodes.orchestrator._score_output", return_value=7), \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""), \
-             patch("nodes.orchestrator._cache_lookup", return_value=None):
+        with (
+            patch("nodes.orchestrator._score_output", return_value=7),
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+            patch("nodes.orchestrator._cache_lookup", return_value=None),
+        ):
             result = orchestrator(state)
 
         # Should NOT have a second delegation

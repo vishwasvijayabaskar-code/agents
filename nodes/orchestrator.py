@@ -10,17 +10,54 @@ from state import AgentState
 
 # --- Fast-path routing heuristics ---
 
-_MULTI_HOP = ("then", "after that", "first", "research and", "research then",
-              "find and", "analyze and build", "step 1", "step 2")
+_MULTI_HOP = (
+    "then",
+    "after that",
+    "first",
+    "research and",
+    "research then",
+    "find and",
+    "analyze and build",
+    "step 1",
+    "step 2",
+)
 
-_CODE_KEYWORDS = ("write", "build", "implement", "create", "code", "html",
-                  "css", "python", "javascript", "function", "class", "api",
-                  "endpoint", "component", "page", "app", "script", "fix",
-                  "refactor", "debug")
+_CODE_KEYWORDS = (
+    "write",
+    "build",
+    "implement",
+    "create",
+    "code",
+    "html",
+    "css",
+    "python",
+    "javascript",
+    "function",
+    "class",
+    "api",
+    "endpoint",
+    "component",
+    "page",
+    "app",
+    "script",
+    "fix",
+    "refactor",
+    "debug",
+)
 
-_RESEARCH_KEYWORDS = ("research", "search", "find out", "look up",
-                      "what is the latest", "compare", "analyze",
-                      "investigate", "how does.*work", "explain")
+_RESEARCH_KEYWORDS = (
+    "research",
+    "search",
+    "find out",
+    "look up",
+    "what is the latest",
+    "compare",
+    "analyze",
+    "investigate",
+    "how does.*work",
+    "explain",
+)
+
 
 def _fast_route(task: str) -> str | None:
     """Return route string if task can be classified without LLM, else None."""
@@ -39,14 +76,25 @@ def _fast_route(task: str) -> str | None:
     # Short + simple = FAST
     return "FAST"
 
+
 # --- Escalation heuristics ---
 
-_ESCALATION_KEYWORDS = ("complex", "production", "scalable", "from scratch",
-                        "entire", "full", "architect", "system design",
-                        "comprehensive", "enterprise", "distributed")
+_ESCALATION_KEYWORDS = (
+    "complex",
+    "production",
+    "scalable",
+    "from scratch",
+    "entire",
+    "full",
+    "architect",
+    "system design",
+    "comprehensive",
+    "enterprise",
+    "distributed",
+)
 
-_HEAVY_TASK_KEYWORDS = ("write", "build", "implement", "create", "design",
-                        "architect", "debug", "refactor")
+_HEAVY_TASK_KEYWORDS = ("write", "build", "implement", "create", "design", "architect", "debug", "refactor")
+
 
 def _should_escalate_to_claude(task: str, route: str) -> bool:
     """Override CODER→CLAUDE for complex tasks."""
@@ -59,6 +107,7 @@ def _should_escalate_to_claude(task: str, route: str) -> bool:
     if has_heavy and (len(task) > 200 or has_complex):
         return True
     return False
+
 
 # --- Confidence routing (Tier 3.4) ---
 
@@ -74,8 +123,15 @@ def _heuristic_score(output: str) -> int | None:
     stripped = output.strip()
     low = stripped.lower()
     # Check error signals first (regardless of length)
-    _ERROR_SIGNALS = ("sorry, i can't", "sorry, i cannot", "i cannot help",
-                      "unable to", "i can't help", "[error", "error:")
+    _ERROR_SIGNALS = (
+        "sorry, i can't",
+        "sorry, i cannot",
+        "i cannot help",
+        "unable to",
+        "i can't help",
+        "[error",
+        "error:",
+    )
     if any(sig in low for sig in _ERROR_SIGNALS):
         return 3  # likely bad → let LLM confirm
     # Too short = suspicious
@@ -102,8 +158,8 @@ def _score_output(task: str, output: str) -> int:
     user = f"Task: {task}\n\nOutput:\n{output[:1200]}"
     try:
         raw = _call(fast_model, system, user).strip()
-        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
-        m = re.search(r'\b(10|[1-9])\b', raw)
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+        m = re.search(r"\b(10|[1-9])\b", raw)
         return int(m.group()) if m else 5
     except Exception:
         return 5
@@ -115,6 +171,7 @@ def _confidence_escalation_done(state: AgentState) -> bool:
 
 
 # --- Task decomposition (Tier 8B) ---
+
 
 def _is_multi_hop(task: str) -> bool:
     """True if task contains multi-hop signals and is non-trivial."""
@@ -143,17 +200,14 @@ Rules:
 
     try:
         raw = _call(model, system, f"Task: {task}").strip()
-        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
         # Extract JSON array
-        match = re.search(r'\[.*\]', raw, re.DOTALL)
+        match = re.search(r"\[.*\]", raw, re.DOTALL)
         if match:
             subtasks = json.loads(match.group())
             # Validate structure
             if isinstance(subtasks, list) and len(subtasks) >= 2:
-                valid = all(
-                    isinstance(s, dict) and "route" in s and "task" in s
-                    for s in subtasks
-                )
+                valid = all(isinstance(s, dict) and "route" in s and "task" in s for s in subtasks)
                 if valid:
                     return subtasks[:4]  # cap at 4
     except Exception:
@@ -162,6 +216,7 @@ Rules:
 
 
 # --- Orchestrator node ---
+
 
 def orchestrator(state: AgentState) -> AgentState:
     # Force-route: --route CLI flag bypasses orchestrator entirely
@@ -196,7 +251,7 @@ def orchestrator(state: AgentState) -> AgentState:
             state["iterations"] = state.get("iterations", 0) + 1
             state["current_subtask"] = idx + 1
             state["history"].append(
-                f"Orchestrator → subtask {idx+1}/{len(subtasks)}: route={st['route']}, task={st['task'][:60]}"
+                f"Orchestrator → subtask {idx + 1}/{len(subtasks)}: route={st['route']}, task={st['task'][:60]}"
             )
             return state
         else:
@@ -224,8 +279,7 @@ def orchestrator(state: AgentState) -> AgentState:
             state["subtasks"] = subtasks
             state["current_subtask"] = 0
             state["history"].append(
-                f"Orchestrator → decomposed into {len(subtasks)} subtasks: "
-                + " → ".join(s["route"] for s in subtasks)
+                f"Orchestrator → decomposed into {len(subtasks)} subtasks: " + " → ".join(s["route"] for s in subtasks)
             )
             # Re-enter to execute first subtask
             return orchestrator(state)
@@ -244,12 +298,8 @@ def orchestrator(state: AgentState) -> AgentState:
                 # Look up node function for target agent
                 node_map = _get_delegation_targets()
                 if target_agent in node_map:
-                    state["history"].append(
-                        f"Orchestrator → delegation {agent_name}→{target_agent}: {query[:60]}"
-                    )
-                    delegate_result = execute_delegation(
-                        target_agent, query, node_map[target_agent], state
-                    )
+                    state["history"].append(f"Orchestrator → delegation {agent_name}→{target_agent}: {query[:60]}")
+                    delegate_result = execute_delegation(target_agent, query, node_map[target_agent], state)
                     # Inject delegation result back and strip tags from original
                     clean_output = strip_delegation_tags(output)
                     state["agent_outputs"][agent_name] = (
@@ -336,10 +386,10 @@ Rules:
 
     raw = _call(model, system, user).strip()
     # Strip qwen3 chain-of-thought tags before JSON extraction
-    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
 
     try:
-        json_match = re.search(r'\{[^{}]*\}', raw, re.DOTALL)
+        json_match = re.search(r"\{[^{}]*\}", raw, re.DOTALL)
         parsed = json.loads(json_match.group() if json_match else raw)
         route = parsed.get("route")
         done = parsed.get("done", False)
@@ -368,6 +418,7 @@ Rules:
 
 _BUILTIN_WORKERS = {"CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR", "CODEBASE"}
 
+
 def _worker_nodes() -> set[str]:
     return _BUILTIN_WORKERS | set(get_plugin_routes())
 
@@ -376,6 +427,7 @@ def _get_delegation_targets() -> dict:
     """Return {name: node_fn} for agents that can be delegated to."""
     # Import lazily to avoid circular imports
     from nodes import claude, coder, fast, researcher
+
     return {
         "CODER": coder,
         "RESEARCHER": researcher,

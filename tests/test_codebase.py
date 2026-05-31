@@ -1,4 +1,5 @@
 """Tests for codebase indexing and query (Option C)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch

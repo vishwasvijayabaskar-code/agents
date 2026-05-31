@@ -6,6 +6,7 @@ Post-processor detects the tag, runs the delegated task, injects result back.
 
 Max 1 delegation per agent per task to prevent infinite loops.
 """
+
 import re
 from typing import Callable
 

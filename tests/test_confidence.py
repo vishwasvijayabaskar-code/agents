@@ -1,4 +1,5 @@
 """Tests for confidence routing (Tier 3.4)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -89,9 +90,11 @@ class TestConfidenceEscalationIntegration:
             iterations=1,
             agent_outputs={"FAST": "Bubble sort compares adjacent elements."},
         )
-        with patch("nodes.orchestrator._score_output", return_value=3), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""), \
-             patch("nodes.orchestrator._cache_lookup", return_value=None):
+        with (
+            patch("nodes.orchestrator._score_output", return_value=3),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+            patch("nodes.orchestrator._cache_lookup", return_value=None),
+        ):
             result = orchestrator(state)
 
         assert result["route"] == "CODER"
@@ -103,9 +106,11 @@ class TestConfidenceEscalationIntegration:
             iterations=1,
             agent_outputs={"FAST": "2+2 = 4"},
         )
-        with patch("nodes.orchestrator._score_output", return_value=9), \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._score_output", return_value=9),
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             result = orchestrator(state)
 
         assert not any("confidence escalation" in h for h in result["history"])
@@ -119,13 +124,15 @@ class TestConfidenceEscalationIntegration:
             agent_outputs={"FAST": "short answer", "CODER": "some code"},
             history=list(prior_history),
         )
-        with patch("nodes.orchestrator._score_output", return_value=2), \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._score_output", return_value=2),
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             result = orchestrator(state)
 
         # Count only history entries added THIS call (after the prior ones)
-        new_entries = result["history"][len(prior_history):]
+        new_entries = result["history"][len(prior_history) :]
         new_escalations = [h for h in new_entries if "confidence escalation" in h]
         assert len(new_escalations) == 0
 
@@ -137,9 +144,11 @@ class TestConfidenceEscalationIntegration:
             agent_outputs={"FAST": "Hi there!"},
             history=["Orchestrator → fast-path route=FAST"],
         )
-        with patch("nodes.orchestrator._score_output") as mock_score, \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._score_output") as mock_score,
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             orchestrator(state)
 
         # _score_output should NOT have been called
@@ -153,10 +162,12 @@ class TestConfidenceEscalationIntegration:
             agent_outputs={"FAST": "A hash map stores key-value pairs."},
             history=["Orchestrator → forced route=FAST"],
         )
-        with patch("nodes.orchestrator._score_output") as mock_score, \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""), \
-             patch("nodes.orchestrator._cache_lookup", return_value=None):
+        with (
+            patch("nodes.orchestrator._score_output") as mock_score,
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+            patch("nodes.orchestrator._cache_lookup", return_value=None),
+        ):
             result = orchestrator(state)
 
         mock_score.assert_not_called()
@@ -169,9 +180,11 @@ class TestConfidenceEscalationIntegration:
             iterations=2,
             agent_outputs={"FAST": "meh", "CODER": "existing code"},
         )
-        with patch("nodes.orchestrator._score_output", return_value=2), \
-             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
-             patch("nodes.orchestrator._relevant_memory", return_value=""):
+        with (
+            patch("nodes.orchestrator._score_output", return_value=2),
+            patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'),
+            patch("nodes.orchestrator._relevant_memory", return_value=""),
+        ):
             result = orchestrator(state)
 
         assert not any("confidence escalation" in h for h in result["history"])

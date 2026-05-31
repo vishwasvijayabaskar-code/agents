@@ -5,12 +5,14 @@ Usage:
     model = cfg.model("coder")
     timeout = cfg.get("executor", "timeout", 60)
 """
+
 import os
 from pathlib import Path
 
 import yaml
 
 _CONFIG_FILE = Path(__file__).parent.parent / "config.yaml"
+
 
 def _load() -> dict:
     if _CONFIG_FILE.exists():
@@ -20,6 +22,7 @@ def _load() -> dict:
         except Exception:
             pass
     return {}
+
 
 class _Config:
     def __init__(self):
@@ -35,10 +38,10 @@ class _Config:
         """Get model for a node. Env var takes precedence over config.yaml."""
         env_map = {
             "orchestrator": "ORCHESTRATOR_MODEL",
-            "coder":        "CODER_MODEL",
-            "researcher":   "RESEARCHER_MODEL",
-            "fast":         "FAST_MODEL",
-            "claude":       "CLAUDE_MODEL",
+            "coder": "CODER_MODEL",
+            "researcher": "RESEARCHER_MODEL",
+            "fast": "FAST_MODEL",
+            "claude": "CLAUDE_MODEL",
         }
         env_key = env_map.get(key)
         if env_key:
@@ -55,10 +58,10 @@ class _Config:
         # Also update env var so all callers see the change immediately
         env_map = {
             "orchestrator": "ORCHESTRATOR_MODEL",
-            "coder":        "CODER_MODEL",
-            "researcher":   "RESEARCHER_MODEL",
-            "fast":         "FAST_MODEL",
-            "claude":       "CLAUDE_MODEL",
+            "coder": "CODER_MODEL",
+            "researcher": "RESEARCHER_MODEL",
+            "fast": "FAST_MODEL",
+            "claude": "CLAUDE_MODEL",
         }
         env_key = env_map.get(key)
         if env_key:
@@ -67,10 +70,10 @@ class _Config:
     def list_models(self) -> dict:
         env_map = {
             "orchestrator": "ORCHESTRATOR_MODEL",
-            "coder":        "CODER_MODEL",
-            "researcher":   "RESEARCHER_MODEL",
-            "fast":         "FAST_MODEL",
-            "claude":       "CLAUDE_MODEL",
+            "coder": "CODER_MODEL",
+            "researcher": "RESEARCHER_MODEL",
+            "fast": "FAST_MODEL",
+            "claude": "CLAUDE_MODEL",
         }
         result = {}
         for key, env_key in env_map.items():
@@ -98,8 +101,12 @@ class _Config:
 
         # limits section: known keys must be numeric
         numeric_limits = (
-            "max_iterations", "max_task_chars", "session_result_chars",
-            "project_max_bytes", "max_tokens_per_task", "cache_ttl_hours",
+            "max_iterations",
+            "max_task_chars",
+            "session_result_chars",
+            "project_max_bytes",
+            "max_tokens_per_task",
+            "cache_ttl_hours",
             "llm_retries",
         )
         limits = data.get("limits", {})
@@ -132,5 +139,6 @@ class _Config:
                 warnings.append(f"unknown config section '{section}' (ignored)")
 
         return errors, warnings
+
 
 cfg = _Config()

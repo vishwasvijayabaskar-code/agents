@@ -4,17 +4,20 @@ _CHROMA_DIR = str(Path(__file__).parent.parent / "chroma")
 _chroma_client = None
 _chroma_collection = None
 
+
 def _get_chroma():
     global _chroma_client, _chroma_collection
     if _chroma_collection is not None:
         return _chroma_collection
     try:
         import chromadb
+
         _chroma_client = chromadb.PersistentClient(path=_CHROMA_DIR)
         _chroma_collection = _chroma_client.get_or_create_collection("agent_memory")
     except Exception:
         _chroma_collection = None
     return _chroma_collection
+
 
 def _embed_memory(task: str, result: str, agents: list[str], timestamp: str):
     col = _get_chroma()
@@ -22,10 +25,14 @@ def _embed_memory(task: str, result: str, agents: list[str], timestamp: str):
         return
     try:
         doc = f"Task: {task}\nAgents: {', '.join(agents)}\nResult: {result[:600]}"
-        col.add(documents=[doc], ids=[timestamp],
-                metadatas=[{"task": task, "agents": ", ".join(agents), "timestamp": timestamp}])
+        col.add(
+            documents=[doc],
+            ids=[timestamp],
+            metadatas=[{"task": task, "agents": ", ".join(agents), "timestamp": timestamp}],
+        )
     except Exception:
         pass
+
 
 def _relevant_memory(task: str, k: int = 5) -> str:
     col = _get_chroma()
@@ -52,6 +59,7 @@ def _within_ttl(timestamp: str, ttl_hours: float) -> bool:
         return False
     try:
         from datetime import datetime
+
         ts = datetime.fromisoformat(timestamp)
         age_hours = (datetime.now() - ts).total_seconds() / 3600.0
         return age_hours <= ttl_hours
@@ -71,6 +79,7 @@ def _cache_lookup(task: str, max_distance: float = 0.15, ttl_hours: float | None
     if ttl_hours is None:
         try:
             from helpers.config import cfg
+
             ttl_hours = float(cfg.get("limits", "cache_ttl_hours", 24))
         except Exception:
             ttl_hours = 24

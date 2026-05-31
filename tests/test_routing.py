@@ -1,4 +1,5 @@
 """Tests for orchestrator routing logic — no LLM calls needed."""
+
 import sys
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from tests.conftest import make_state
 # ---------------------------------------------------------------------------
 # _fast_route
 # ---------------------------------------------------------------------------
+
 
 class TestFastRoute:
     def test_trivial_question_returns_fast(self):
@@ -60,6 +62,7 @@ class TestFastRoute:
 # _should_escalate_to_claude
 # ---------------------------------------------------------------------------
 
+
 class TestEscalation:
     def test_simple_coder_task_no_escalate(self):
         assert _should_escalate_to_claude("write a hello world", "CODER") is False
@@ -87,6 +90,7 @@ class TestEscalation:
 # ---------------------------------------------------------------------------
 # route_decision
 # ---------------------------------------------------------------------------
+
 
 class TestRouteDecision:
     def test_routes_to_coder(self):
@@ -174,6 +178,7 @@ class TestRouteDecision:
 # ---------------------------------------------------------------------------
 # _maybe_synthesize
 # ---------------------------------------------------------------------------
+
 
 class TestMaybeSynthesize:
     def test_no_workers_ends(self):

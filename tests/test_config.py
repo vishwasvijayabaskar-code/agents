@@ -1,4 +1,5 @@
 """Tests for helpers/config.py — cfg singleton."""
+
 import os
 import sys
 import tempfile
@@ -40,6 +41,7 @@ def _make_cfg(data: dict = None) -> object:
     import copy
 
     from helpers.config import _Config
+
     instance = _Config.__new__(_Config)
     instance._data = copy.deepcopy(data or SAMPLE_DATA)
     return instance
@@ -87,6 +89,7 @@ class TestConfig:
     def test_missing_yaml_falls_back_gracefully(self):
         """_Config with empty _data should not crash."""
         from helpers.config import _Config
+
         instance = _Config.__new__(_Config)
         instance._data = {}
         result = instance.model("fast")

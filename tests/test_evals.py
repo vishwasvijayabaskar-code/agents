@@ -1,4 +1,5 @@
 """Tests for eval harness (Option E)."""
+
 import json
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ from evals.suite import SUITE
 # ---------------------------------------------------------------------------
 # Checker unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestContainsCode:
     def test_detects_fenced_block(self):
@@ -127,6 +129,7 @@ class TestRunChecks:
 # Suite validation
 # ---------------------------------------------------------------------------
 
+
 class TestSuite:
     def test_suite_is_list(self):
         assert isinstance(SUITE, list)
@@ -144,10 +147,10 @@ class TestSuite:
 
     def test_all_check_types_valid(self):
         from evals.checkers import _CHECKER_MAP
+
         for task in SUITE:
             for check in task["checks"]:
-                assert check["type"] in _CHECKER_MAP, \
-                    f"Unknown checker '{check['type']}' in task '{task['id']}'"
+                assert check["type"] in _CHECKER_MAP, f"Unknown checker '{check['type']}' in task '{task['id']}'"
 
     def test_routes_are_valid_or_none(self):
         valid = {"CODER", "RESEARCHER", "FAST", "CLAUDE", "CODEX", "EXECUTOR", "CODEBASE", None}
@@ -159,10 +162,12 @@ class TestSuite:
 # Runner (dry-run mode — no agents invoked)
 # ---------------------------------------------------------------------------
 
+
 class TestRunnerResilience:
     def test_task_crash_isolated_not_fatal(self, tmp_path):
         """A crashing task is marked failed; the run continues + persists."""
         from evals import runner as r_mod
+
         orig = r_mod.RESULTS_DIR
         r_mod.RESULTS_DIR = tmp_path
         call_count = {"n": 0}
@@ -172,9 +177,16 @@ class TestRunnerResilience:
             if call_count["n"] == 1:
                 raise RuntimeError("boom in task 1")
             return {
-                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
-                "passed": True, "checks": [], "llm_score": None, "min_score": 0,
-                "output_preview": "", "error": None, "elapsed_secs": 0.1,
+                "id": task_def["id"],
+                "task": task_def["task"],
+                "route": task_def.get("route"),
+                "passed": True,
+                "checks": [],
+                "llm_score": None,
+                "min_score": 0,
+                "output_preview": "",
+                "error": None,
+                "elapsed_secs": 0.1,
                 "tags": task_def.get("tags", []),
             }
 
@@ -183,8 +195,7 @@ class TestRunnerResilience:
                 summary = r_mod.run_suite(task_id=None, tags=["fast"], dry_run=False)
             # First fast task crashed but run completed for the rest
             assert summary["failed"] >= 1
-            assert any("runner crash" in c.get("reason", "")
-                       for r in summary["results"] for c in r["checks"])
+            assert any("runner crash" in c.get("reason", "") for r in summary["results"] for c in r["checks"])
             # Partial results were persisted to disk
             assert list(tmp_path.glob("*.json"))
         finally:
@@ -193,14 +204,22 @@ class TestRunnerResilience:
     def test_partial_results_written(self, tmp_path):
         """Completed run writes a json marked partial=False (mocked agents)."""
         from evals import runner as r_mod
+
         orig = r_mod.RESULTS_DIR
         r_mod.RESULTS_DIR = tmp_path
 
         def fake(task_def, dry_run=False):
             return {
-                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
-                "passed": True, "checks": [], "llm_score": None, "min_score": 0,
-                "output_preview": "", "error": None, "elapsed_secs": 0.1,
+                "id": task_def["id"],
+                "task": task_def["task"],
+                "route": task_def.get("route"),
+                "passed": True,
+                "checks": [],
+                "llm_score": None,
+                "min_score": 0,
+                "output_preview": "",
+                "error": None,
+                "elapsed_secs": 0.1,
                 "tags": task_def.get("tags", []),
             }
 
@@ -210,6 +229,7 @@ class TestRunnerResilience:
             files = list(tmp_path.glob("*.json"))
             assert files
             import json as _json
+
             data = _json.loads(files[0].read_text())
             assert data["partial"] is False  # completed run
         finally:
@@ -219,6 +239,7 @@ class TestRunnerResilience:
 class TestRunnerDryRun:
     def test_dry_run_runs_without_agents(self):
         from evals.runner import run_suite
+
         summary = run_suite(dry_run=True)
         assert "total" in summary
         assert "passed" in summary
@@ -227,6 +248,7 @@ class TestRunnerDryRun:
     def test_dry_run_all_fail_no_output(self):
         """Dry run: output is empty → all check types that require content fail."""
         from evals.runner import run_suite
+
         summary = run_suite(dry_run=True)
         # In dry-run, output is "" so contains_code, contains_any, min_length all fail
         # Only no_error might pass on empty string (no error signals in "")
@@ -238,18 +260,21 @@ class TestRunnerDryRun:
 
     def test_dry_run_tag_filter(self):
         from evals.runner import run_suite
+
         summary = run_suite(tags=["fast"], dry_run=True)
         for r in summary["results"]:
             assert "fast" in r["tags"]
 
     def test_dry_run_id_filter(self):
         from evals.runner import run_suite
+
         summary = run_suite(task_id="fast_math", dry_run=True)
         assert summary["total"] == 1
         assert summary["results"][0]["id"] == "fast_math"
 
     def test_dry_run_invalid_id_returns_empty(self):
         from evals.runner import run_suite
+
         # No tasks match → run_suite prints warning and returns {}
         summary = run_suite(task_id="nonexistent_task_xyz", dry_run=True)
         assert summary == {}
@@ -259,6 +284,7 @@ class TestCompareRuns:
     def test_compare_needs_two_runs(self, tmp_path):
         """compare_runs returns early if < 2 runs."""
         from evals import runner as r_mod
+
         orig = r_mod.RESULTS_DIR
         r_mod.RESULTS_DIR = tmp_path
         try:
@@ -269,25 +295,32 @@ class TestCompareRuns:
 
     def test_compare_detects_regression(self, tmp_path):
         from evals import runner as r_mod
+
         orig = r_mod.RESULTS_DIR
         r_mod.RESULTS_DIR = tmp_path
 
         # Create two fake run files
         prev = {
             "timestamp": "20260101_000000",
-            "total": 2, "passed": 2, "failed": 0, "pass_rate": 100,
+            "total": 2,
+            "passed": 2,
+            "failed": 0,
+            "pass_rate": 100,
             "results": [
                 {"id": "task_a", "passed": True, "checks": [], "tags": []},
                 {"id": "task_b", "passed": True, "checks": [], "tags": []},
-            ]
+            ],
         }
         curr = {
             "timestamp": "20260102_000000",
-            "total": 2, "passed": 1, "failed": 1, "pass_rate": 50,
+            "total": 2,
+            "passed": 1,
+            "failed": 1,
+            "pass_rate": 50,
             "results": [
                 {"id": "task_a", "passed": False, "checks": [{"passed": False, "reason": "no code"}], "tags": []},
                 {"id": "task_b", "passed": True, "checks": [], "tags": []},
-            ]
+            ],
         }
         (tmp_path / "20260101_000000.json").write_text(json.dumps(prev))
         (tmp_path / "20260102_000000.json").write_text(json.dumps(curr))

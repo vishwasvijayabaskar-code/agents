@@ -2,10 +2,46 @@ import fnmatch
 import re
 from pathlib import Path
 
-_BINARY_EXTS = {'.png','.jpg','.jpeg','.gif','.ico','.svg','.woff','.ttf','.eot','.mp4','.mp3','.zip','.tar','.gz','.pdf','.pyc','.pyo','.so','.dylib','.lock'}
-_SKIP_DIRS = {'.git','node_modules','__pycache__','.venv','venv','env','.env','dist','build','.next','coverage'}
+_BINARY_EXTS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".svg",
+    ".woff",
+    ".ttf",
+    ".eot",
+    ".mp4",
+    ".mp3",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".pdf",
+    ".pyc",
+    ".pyo",
+    ".so",
+    ".dylib",
+    ".lock",
+}
+_SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    "dist",
+    "build",
+    ".next",
+    "coverage",
+}
 
-def _load_project_context(project_path: str, task: str, max_total_bytes: int = 150_000, max_file_bytes: int = 40_000) -> str:
+
+def _load_project_context(
+    project_path: str, task: str, max_total_bytes: int = 150_000, max_file_bytes: int = 40_000
+) -> str:
     """Walk project dir, return relevant files as formatted context block."""
     root = Path(project_path).expanduser().resolve()
     if not root.exists():
@@ -25,9 +61,10 @@ def _load_project_context(project_path: str, task: str, max_total_bytes: int = 1
         return False
 
     # Score files by keyword relevance to task
-    task_words = set(re.findall(r'\w+', task.lower()))
+    task_words = set(re.findall(r"\w+", task.lower()))
+
     def relevance(p: Path) -> int:
-        name_words = set(re.findall(r'\w+', p.stem.lower()))
+        name_words = set(re.findall(r"\w+", p.stem.lower()))
         return len(name_words & task_words)
 
     files = []
@@ -67,4 +104,4 @@ def _load_project_context(project_path: str, task: str, max_total_bytes: int = 1
 
     if not blocks:
         return "[No readable files found in project]"
-    return f"<project_files path=\"{root}\">\n" + "\n\n".join(blocks) + "\n</project_files>"
+    return f'<project_files path="{root}">\n' + "\n\n".join(blocks) + "\n</project_files>"

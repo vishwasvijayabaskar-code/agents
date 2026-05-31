@@ -1,4 +1,5 @@
 """Tests for file-watcher mode (Option B)."""
+
 import sys
 import tempfile
 from pathlib import Path
@@ -74,6 +75,7 @@ class TestDetectTask:
 
     def test_task_json(self, tmp_path):
         import json
+
         f = tmp_path / "job.task"
         f.write_text(json.dumps({"task": "what is asyncio", "route": "FAST"}))
         task, route, project = _detect_task(f)
@@ -105,6 +107,7 @@ class TestSaveOutput:
         source = tmp_path / "input.txt"
         source.write_text("test")
         import watch
+
         orig_base = watch.OUTPUT_BASE
         watch.OUTPUT_BASE = tmp_path / "output"
         try:
@@ -122,6 +125,7 @@ class TestSaveOutput:
         source = tmp_path / "myfile.txt"
         source.write_text("x")
         import watch
+
         orig_base = watch.OUTPUT_BASE
         watch.OUTPUT_BASE = tmp_path / "output"
         try:

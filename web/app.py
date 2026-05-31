@@ -7,6 +7,7 @@ Run:
     python3 web/app.py              # http://localhost:8000
     uvicorn web.app:app --reload    # dev mode with auto-reload
 """
+
 import asyncio
 import json
 import os
@@ -41,15 +42,18 @@ _web_sessions: dict[str, list[dict]] = {}
 # Auth helpers
 # ---------------------------------------------------------------------------
 
+
 def _auth_token() -> str:
     """Return configured auth token (empty = no auth)."""
     return cfg.get("web", "auth_token", "") or os.getenv("WEB_AUTH_TOKEN", "")
+
 
 def _is_authenticated(request: Request) -> bool:
     token = _auth_token()
     if not token:
         return True  # no auth configured
     return request.session.get("authenticated") is True
+
 
 def _require_auth(request: Request):
     """Raise redirect to /login if auth required and not authenticated."""
@@ -82,6 +86,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_history() -> list[dict]:
     """Load all sessions, most recent first."""
@@ -123,6 +128,7 @@ def _load_stats(date: str | None = None) -> list[dict]:
 # SSE task runner
 # ---------------------------------------------------------------------------
 
+
 async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
     """Run task in thread, stream tokens live via asyncio.Queue → SSE."""
     loop = asyncio.get_event_loop()
@@ -136,6 +142,7 @@ async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
     def _run_in_thread():
         from helpers.llm import stream_callback
         from main import run as _run
+
         try:
             force_route = route.upper() if route else None
             with stream_callback(_token_cb):
@@ -179,12 +186,14 @@ async def _run_task_sse(task: str, route: str | None) -> AsyncIterator[str]:
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
     if _is_authenticated(request):
         return RedirectResponse(url="/", status_code=302)
     return templates.TemplateResponse(
-        request=request, name="login.html",
+        request=request,
+        name="login.html",
         context={"error": error, "auth_required": bool(_auth_token())},
     )
 
@@ -217,7 +226,8 @@ async def index(request: Request):
     session_tasks = _web_sessions.get(sid, [])
     models = cfg.list_models()
     return templates.TemplateResponse(
-        request=request, name="index.html",
+        request=request,
+        name="index.html",
         context={"models": models, "session_tasks": session_tasks, "auth_enabled": bool(_auth_token())},
     )
 
@@ -254,12 +264,14 @@ async def run_task(
                     pass
         # Record in web session history
         if task:
-            _web_sessions.setdefault(sid, []).append({
-                "task": task,
-                "result": result_captured["result"][:500],
-                "agents": result_captured["agents"],
-                "ts": datetime.now().isoformat(),
-            })
+            _web_sessions.setdefault(sid, []).append(
+                {
+                    "task": task,
+                    "result": result_captured["result"][:500],
+                    "agents": result_captured["agents"],
+                    "ts": datetime.now().isoformat(),
+                }
+            )
             # Keep last 50 tasks per session
             _web_sessions[sid] = _web_sessions[sid][-50:]
 
@@ -303,7 +315,10 @@ async def api_session_history(request: Request):
 
 def _session_to_markdown(tasks: list[dict]) -> str:
     """Render a web session's task list as a Markdown document."""
-    lines = ["# agents session export", f"\n_{len(tasks)} task(s), exported {datetime.now().isoformat(timespec='seconds')}_\n"]
+    lines = [
+        "# agents session export",
+        f"\n_{len(tasks)} task(s), exported {datetime.now().isoformat(timespec='seconds')}_\n",
+    ]
     for i, t in enumerate(tasks, 1):
         agents = ", ".join(t.get("agents", [])) or "—"
         lines.append(f"\n## {i}. {t.get('task', '')}\n")
@@ -400,6 +415,7 @@ async def models_page(request: Request):
 async def api_graph():
     """Return mermaid diagram string for the agent graph."""
     from helpers.plugins import get_plugin_routes, load_plugins
+
     load_plugins()
     plugin_routes = get_plugin_routes()
 

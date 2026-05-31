@@ -7,18 +7,28 @@ from state import AgentState
 from ui import console, print_agent_header
 
 _BLOCKED_PATTERNS = [
-    r'\brm\s+-rf\b', r'\brm\s+-r\b', r'\bsudo\b', r'\bmkfs\b',
-    r'\bdd\s+if=', r'\bchmod\s+777\b', r'\bchown\b',
-    r'curl\b.*\|\s*(sh|bash)', r'wget\b.*\|\s*(sh|bash)',
-    r'\b(shutdown|reboot|halt)\b', r'\bkill\s+-9\s+1\b',
-    r'>\s*/dev/sd', r'>\s*/etc/',
+    r"\brm\s+-rf\b",
+    r"\brm\s+-r\b",
+    r"\bsudo\b",
+    r"\bmkfs\b",
+    r"\bdd\s+if=",
+    r"\bchmod\s+777\b",
+    r"\bchown\b",
+    r"curl\b.*\|\s*(sh|bash)",
+    r"wget\b.*\|\s*(sh|bash)",
+    r"\b(shutdown|reboot|halt)\b",
+    r"\bkill\s+-9\s+1\b",
+    r">\s*/dev/sd",
+    r">\s*/etc/",
 ]
+
 
 def _is_dangerous(cmd: str) -> bool:
     for pattern in _BLOCKED_PATTERNS:
         if re.search(pattern, cmd, re.IGNORECASE):
             return True
     return False
+
 
 def executor(state: AgentState) -> AgentState:
     """Runs shell commands embedded in coder output. Retries up to 3x on failure."""
@@ -32,9 +42,9 @@ def executor(state: AgentState) -> AgentState:
 
     try:
         coder_output = (state.get("agent_outputs") or {}).get("CODER", "")
-        run_tags = re.findall(r'<run>(.*?)</run>', coder_output, re.DOTALL)
+        run_tags = re.findall(r"<run>(.*?)</run>", coder_output, re.DOTALL)
         if not run_tags:
-            run_tags = re.findall(r'```(?:run|bash|sh)\n(.*?)```', coder_output, re.DOTALL)
+            run_tags = re.findall(r"```(?:run|bash|sh)\n(.*?)```", coder_output, re.DOTALL)
 
         if not run_tags:
             if not state.get("agent_outputs"):
@@ -56,10 +66,7 @@ def executor(state: AgentState) -> AgentState:
             retries = 0
             while retries < 3:
                 try:
-                    proc = subprocess.run(
-                        cmd, shell=True, capture_output=True, text=True,
-                        timeout=60, cwd=work_dir
-                    )
+                    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60, cwd=work_dir)
                     stdout = proc.stdout.strip()
                     stderr = proc.stderr.strip()
                     exit_code = proc.returncode

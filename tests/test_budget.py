@@ -1,4 +1,5 @@
 """Tests for token budget enforcement (Tier 8A)."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -19,7 +20,7 @@ from helpers.llm import (
 
 class TestTokenBudget:
     def test_budget_context_manager_sets_and_clears(self):
-        assert getattr(_stream_ctx, 'budget', 0) == 0
+        assert getattr(_stream_ctx, "budget", 0) == 0
         with token_budget(10000):
             assert _stream_ctx.budget == 10000
             assert _stream_ctx.budget_used == 0
@@ -54,6 +55,7 @@ class TestTokenBudget:
             _track_tokens(10, 5)  # over budget
             with pytest.raises(TokenBudgetExceeded):
                 from helpers.llm import _call
+
                 _call("model", "sys", "usr")
 
     def test_call_stream_checks_budget_before_llm(self):
@@ -62,6 +64,7 @@ class TestTokenBudget:
             _track_tokens(10, 5)
             with pytest.raises(TokenBudgetExceeded):
                 from helpers.llm import _call_stream
+
                 _call_stream("model", "sys", "usr")
 
     def test_call_tracks_tokens_after_success(self):
@@ -72,9 +75,12 @@ class TestTokenBudget:
         mock_response.usage.prompt_tokens = 50
         mock_response.usage.completion_tokens = 10
 
-        with token_budget(10000), \
-             patch("helpers.llm.completion", return_value=mock_response), \
-             patch("helpers.llm._log_usage"):
+        with (
+            token_budget(10000),
+            patch("helpers.llm.completion", return_value=mock_response),
+            patch("helpers.llm._log_usage"),
+        ):
             from helpers.llm import _call
+
             _call("model", "sys", "usr")
             assert get_budget_used() == 60

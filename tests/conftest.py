@@ -1,4 +1,5 @@
 """Shared fixtures for all tests. No Ollama required — all LLM calls mocked."""
+
 import os
 import sys
 from pathlib import Path

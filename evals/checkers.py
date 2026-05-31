@@ -6,8 +6,13 @@ Each checker receives an output string and returns (passed: bool, reason: str).
 from typing import Callable
 
 _ERROR_SIGNALS = (
-    "sorry, i can't", "sorry, i cannot", "i cannot help",
-    "unable to help", "i can't help with", "[error", "error:",
+    "sorry, i can't",
+    "sorry, i cannot",
+    "i cannot help",
+    "unable to help",
+    "i can't help with",
+    "[error",
+    "error:",
     "i'm not able",
 )
 
@@ -16,9 +21,7 @@ def check_contains_code(output: str, spec: dict) -> tuple[bool, str]:
     """Pass if output contains a code block."""
     has_block = "```" in output
     has_indent_code = any(
-        line.startswith("    ") and (
-            "def " in line or "return " in line or "import " in line or "class " in line
-        )
+        line.startswith("    ") and ("def " in line or "return " in line or "import " in line or "class " in line)
         for line in output.splitlines()
     )
     if has_block or has_indent_code:
