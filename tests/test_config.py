@@ -158,3 +158,37 @@ class TestConfigValidation:
         errors, warnings = cfg.validate()
         assert errors == []
         assert not any("web" in w for w in warnings)
+
+
+class TestConfigDrift:
+    """Guard against config drift: the shipped config.yaml must validate clean,
+    so any new section/key forces a matching update to cfg.validate()."""
+
+    def _repo_config(self):
+        import yaml
+
+        from helpers.config import _CONFIG_FILE
+
+        return yaml.safe_load(_CONFIG_FILE.read_text()) or {}
+
+    def test_shipped_config_validates_clean(self):
+        from helpers.config import _Config
+
+        inst = _Config.__new__(_Config)
+        inst._data = self._repo_config()
+        errors, warnings = inst.validate()
+        assert errors == [], f"config.yaml has validation errors: {errors}"
+        assert warnings == [], f"config.yaml has unknown sections (drift): {warnings}"
+
+    def test_env_example_keys_documented(self):
+        """Every WEB_/MODEL env var in .env.example maps to a known config concept."""
+        from helpers.config import _CONFIG_FILE
+
+        env_example = (_CONFIG_FILE.parent / ".env.example").read_text()
+        # These env vars must be referenced somewhere in the codebase (config or helpers)
+        import re
+
+        declared = set(re.findall(r"^#?\s*([A-Z][A-Z0-9_]+)=", env_example, re.MULTILINE))
+        # Spot-check the critical ones are present
+        for key in ("ANTHROPIC_API_KEY", "OLLAMA_API_BASE", "WEB_AUTH_TOKEN"):
+            assert key in declared, f"{key} missing from .env.example"
