@@ -1,0 +1,5 @@
+# hadolint config — https://github.com/hadolint/hadolint
+ignored:
+  - DL3008  # pin apt versions — we don't apt-install in the image
+  - DL3013  # pin pip versions — handled by requirements.txt
+  - DL3059  # multiple consecutive RUN — cache-friendly layering is intentional

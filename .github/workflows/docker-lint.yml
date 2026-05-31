@@ -1,0 +1,30 @@
+name: Docker lint
+
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile, docker-compose.yml, .hadolint.yaml]
+  pull_request:
+    branches: [main]
+    paths: [Dockerfile, docker-compose.yml, .hadolint.yaml]
+
+# Advisory: surfaces Dockerfile/compose issues without gating merges.
+jobs:
+  hadolint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+
+  compose-validate:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate docker-compose.yml
+        run: docker compose -f docker-compose.yml config >/dev/null
