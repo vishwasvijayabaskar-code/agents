@@ -25,8 +25,9 @@ def _build_prompt(state: AgentState) -> str:
     return "\n".join(parts)
 
 
-def _claude_cli(state: AgentState) -> str:
-    """Run Claude Code CLI in non-interactive mode."""
+def _claude_cli(state: AgentState) -> tuple[str, bool]:
+    """Run Claude Code CLI in non-interactive mode.
+    Returns (output, success). success=False signals the caller to try the API fallback."""
     prompt = _build_prompt(state)
     work_dir = state.get("output_dir") or str(Path(__file__).parent.parent / "output")
     Path(work_dir).mkdir(parents=True, exist_ok=True)
@@ -43,17 +44,21 @@ def _claude_cli(state: AgentState) -> str:
             cwd=work_dir,
         )
         result = proc.stdout.strip()
-        if proc.returncode != 0 and proc.stderr:
-            result += f"\nSTDERR: {proc.stderr.strip()}"
+        if proc.returncode != 0:
+            # CLI failed (often auth: "401 Invalid authentication credentials").
+            # Signal failure so caller can fall back to the API path.
+            err = (proc.stderr or "").strip()
+            console.print(f"[yellow]Claude CLI failed (exit {proc.returncode}); trying API fallback[/yellow]")
+            return (f"[Claude CLI error: {err[:200]}]", False)
         if not result:
-            result = "[Claude Code CLI returned no output]"
+            return ("[Claude Code CLI returned no output]", False)
     except subprocess.TimeoutExpired:
-        result = "[Claude Code CLI timed out after 5 minutes]"
+        return ("[Claude Code CLI timed out after 5 minutes]", False)
     except Exception as e:
-        result = f"[Claude Code CLI error: {e}]"
+        return (f"[Claude Code CLI error: {e}]", False)
 
     console.print(result, markup=False)
-    return result
+    return (result, True)
 
 
 def _claude_api_fallback(state: AgentState) -> str:
@@ -84,10 +89,19 @@ def _claude_api_fallback(state: AgentState) -> str:
 
 
 def claude(state: AgentState) -> AgentState:
-    """Claude node — uses Claude Code CLI if available, falls back to API."""
+    """Claude node — uses Claude Code CLI if available, falls back to API.
+    If the CLI is present but fails (e.g. unauthenticated 401), degrade to the
+    API path; if that also can't run (no key), return a clear message."""
     try:
         if shutil.which("claude"):
-            result = _claude_cli(state)
+            result, ok = _claude_cli(state)
+            if not ok:
+                api_result = _claude_api_fallback(state)
+                # Only replace CLI error if the API path actually produced something
+                if api_result and not api_result.startswith("[Claude node:"):
+                    result = api_result
+                else:
+                    result = api_result or result
         else:
             result = _claude_api_fallback(state)
 

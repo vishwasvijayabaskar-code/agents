@@ -159,6 +159,63 @@ class TestSuite:
 # Runner (dry-run mode — no agents invoked)
 # ---------------------------------------------------------------------------
 
+class TestRunnerResilience:
+    def test_task_crash_isolated_not_fatal(self, tmp_path):
+        """A crashing task is marked failed; the run continues + persists."""
+        from evals import runner as r_mod
+        orig = r_mod.RESULTS_DIR
+        r_mod.RESULTS_DIR = tmp_path
+        call_count = {"n": 0}
+
+        def flaky(task_def, dry_run=False):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RuntimeError("boom in task 1")
+            return {
+                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
+                "passed": True, "checks": [], "llm_score": None, "min_score": 0,
+                "output_preview": "", "error": None, "elapsed_secs": 0.1,
+                "tags": task_def.get("tags", []),
+            }
+
+        try:
+            with patch("evals.runner._run_task", side_effect=flaky):
+                summary = r_mod.run_suite(task_id=None, tags=["fast"], dry_run=False)
+            # First fast task crashed but run completed for the rest
+            assert summary["failed"] >= 1
+            assert any("runner crash" in c.get("reason", "")
+                       for r in summary["results"] for c in r["checks"])
+            # Partial results were persisted to disk
+            assert list(tmp_path.glob("*.json"))
+        finally:
+            r_mod.RESULTS_DIR = orig
+
+    def test_partial_results_written(self, tmp_path):
+        """Completed run writes a json marked partial=False (mocked agents)."""
+        from evals import runner as r_mod
+        orig = r_mod.RESULTS_DIR
+        r_mod.RESULTS_DIR = tmp_path
+
+        def fake(task_def, dry_run=False):
+            return {
+                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
+                "passed": True, "checks": [], "llm_score": None, "min_score": 0,
+                "output_preview": "", "error": None, "elapsed_secs": 0.1,
+                "tags": task_def.get("tags", []),
+            }
+
+        try:
+            with patch("evals.runner._run_task", side_effect=fake):
+                r_mod.run_suite(tags=["fast"], dry_run=False)
+            files = list(tmp_path.glob("*.json"))
+            assert files
+            import json as _json
+            data = _json.loads(files[0].read_text())
+            assert data["partial"] is False  # completed run
+        finally:
+            r_mod.RESULTS_DIR = orig
+
+
 class TestRunnerDryRun:
     def test_dry_run_runs_without_agents(self):
         from evals.runner import run_suite

@@ -109,10 +109,36 @@ def run_suite(
     results = []
     passed = 0
     failed = 0
+    out_file = RESULTS_DIR / f"{timestamp}.json"
+
+    def _persist(partial: bool):
+        """Write current results to disk (incremental — survives mid-run crash)."""
+        if dry_run:
+            return
+        total = passed + failed
+        out_file.write_text(json.dumps({
+            "timestamp": timestamp,
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "pass_rate": round(passed / total * 100) if total else 0,
+            "partial": partial,
+            "results": results,
+        }, indent=2))
 
     for task_def in tasks:
         console.print(f"  [cyan]{task_def['id']}[/cyan]  {task_def['task'][:60]}...")
-        result = _run_task(task_def, dry_run=dry_run)
+        # Isolate per-task crashes so one bad task can't kill the whole run
+        try:
+            result = _run_task(task_def, dry_run=dry_run)
+        except Exception as e:
+            result = {
+                "id": task_def["id"], "task": task_def["task"], "route": task_def.get("route"),
+                "passed": False, "checks": [{"type": "runner", "passed": False, "reason": f"runner crash: {e}"}],
+                "llm_score": None, "min_score": task_def.get("min_score", 0),
+                "output_preview": "", "error": str(e), "elapsed_secs": 0.0,
+                "tags": task_def.get("tags", []),
+            }
         results.append(result)
         if result["passed"]:
             passed += 1
@@ -125,6 +151,8 @@ def run_suite(
                           + (f"  score={result['llm_score']}/{result['min_score']}" if result['llm_score'] else ""))
             if result["error"]:
                 console.print(f"    [red]   Error: {result['error'][:80]}[/red]")
+        # Persist after every task — partial results survive an external kill
+        _persist(partial=True)
 
     total = passed + failed
     pass_rate = round(passed / total * 100) if total > 0 else 0
@@ -138,10 +166,9 @@ def run_suite(
         "results": results,
     }
 
-    # Save results
+    # Final save (partial=False marks a complete run)
     if not dry_run:
-        out_file = RESULTS_DIR / f"{timestamp}.json"
-        out_file.write_text(json.dumps(summary, indent=2))
+        _persist(partial=False)
         console.print(f"\n[info]Results saved: {out_file}[/info]")
 
     # Print summary table
