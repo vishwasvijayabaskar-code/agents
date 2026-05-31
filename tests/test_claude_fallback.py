@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -59,14 +59,43 @@ class TestClaudeFallback:
         assert "ANTHROPIC_API_KEY" in result["agent_outputs"]["CLAUDE"]
 
 
-class TestClaudeCliReturnsTuple:
-    def test_cli_returns_tuple(self):
-        """_claude_cli must return (text, success) for the chaining logic."""
+def _fake_popen(lines, stderr="", returncode=0):
+    """Build a fake Popen whose stdout iterates `lines`."""
+    proc = MagicMock()
+    proc.stdout = iter(lines)
+    proc.stderr = MagicMock()
+    proc.stderr.read.return_value = stderr
+    proc.wait.return_value = returncode
+    return proc
+
+
+class TestClaudeCliStreaming:
+    def test_returns_tuple_on_failure(self):
+        """_claude_cli returns (text, False) when the CLI exits non-zero."""
         from nodes.claude import _claude_cli
 
         state = make_state(task="x")
-        proc = type("P", (), {"stdout": "", "stderr": "boom", "returncode": 1})()
-        with patch("nodes.claude.subprocess.run", return_value=proc), patch("nodes.claude.print_agent_header"):
+        with (
+            patch("nodes.claude.subprocess.Popen", return_value=_fake_popen([], stderr="boom", returncode=1)),
+            patch("nodes.claude.print_agent_header"),
+        ):
             out, ok = _claude_cli(state)
         assert ok is False
         assert isinstance(out, str)
+
+    def test_streams_lines_to_callback(self):
+        """Stdout lines are forwarded to the thread-local stream callback."""
+        from helpers.llm import stream_callback
+        from nodes.claude import _claude_cli
+
+        state = make_state(task="x")
+        received = []
+        with (
+            patch("nodes.claude.subprocess.Popen", return_value=_fake_popen(["hello ", "world\n"])),
+            patch("nodes.claude.print_agent_header"),
+            stream_callback(received.append),
+        ):
+            out, ok = _claude_cli(state)
+        assert ok is True
+        assert "hello" in out and "world" in out
+        assert "".join(received).strip() == "hello world"

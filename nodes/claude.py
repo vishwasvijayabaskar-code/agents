@@ -35,29 +35,44 @@ def _claude_cli(state: AgentState) -> tuple[str, bool]:
     print_agent_header("CLAUDE", "claude-code-cli")
     console.print("[info]Running Claude Code CLI...[/info]")
 
+    # Stream stdout line-by-line to the TUI + any SSE callback, rather than
+    # blocking until the process exits.
+    from helpers.llm import _stream_ctx
+
+    token_cb = getattr(_stream_ctx, "callback", None)
+    chunks: list[str] = []
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             ["claude", "-p", prompt, "--output-format", "text"],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=300,
             cwd=work_dir,
         )
-        result = proc.stdout.strip()
-        if proc.returncode != 0:
+        try:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                console.print(line, end="", markup=False)
+                chunks.append(line)
+                if token_cb:
+                    token_cb(line)
+            stderr = proc.stderr.read() if proc.stderr else ""
+            rc = proc.wait(timeout=300)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            return ("[Claude Code CLI timed out after 5 minutes]", False)
+        console.print()
+        result = "".join(chunks).strip()
+        if rc != 0:
             # CLI failed (often auth: "401 Invalid authentication credentials").
             # Signal failure so caller can fall back to the API path.
-            err = (proc.stderr or "").strip()
-            console.print(f"[yellow]Claude CLI failed (exit {proc.returncode}); trying API fallback[/yellow]")
-            return (f"[Claude CLI error: {err[:200]}]", False)
+            console.print(f"[yellow]Claude CLI failed (exit {rc}); trying API fallback[/yellow]")
+            return (f"[Claude CLI error: {(stderr or '').strip()[:200]}]", False)
         if not result:
             return ("[Claude Code CLI returned no output]", False)
-    except subprocess.TimeoutExpired:
-        return ("[Claude Code CLI timed out after 5 minutes]", False)
     except Exception as e:
         return (f"[Claude Code CLI error: {e}]", False)
 
-    console.print(result, markup=False)
     return (result, True)
 
 
