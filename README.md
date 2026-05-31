@@ -307,6 +307,36 @@ Requires Ollama to have models pre-pulled (they're stored in the volume).
 
 ---
 
+## Docs
+
+Full documentation site (architecture, configuration reference, contributing) builds
+from `docs/` via mkdocs-material:
+
+```bash
+make docs-serve   # http://localhost:8001
+```
+
+Published via GitHub Pages on push to `main`.
+
+---
+
+## FAQ
+
+**No GPU — will this run?** Yes, but large models (32B) are slow on CPU. Use the
+minimum stack (`qwen2.5:7b` for FAST, a smaller coder) and force routes with
+`--route FAST`. Fast-path keeps short tasks snappy.
+
+**Which models should I pull?** Minimum: `qwen2.5:7b` + `qwen2.5-coder:32b`. Full
+experience adds `qwen3:32b` (orchestrator) + `deepseek-r1:14b` (researcher). Swap any
+at runtime with `/model` or in `config.yaml`.
+
+**Does anything leave my machine?** No — local Ollama only, unless you opt into the
+CLAUDE agent (Anthropic API) by setting `ANTHROPIC_API_KEY`.
+
+**How do I check my setup?** `./run --doctor`.
+
+---
+
 ## Tests
 
 ```bash
