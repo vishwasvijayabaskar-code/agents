@@ -5,7 +5,7 @@
 [![Tests](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml/badge.svg)](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Ollama](https://img.shields.io/badge/runs%20on-Ollama-orange)](https://ollama.com)
-[![coverage](https://img.shields.io/badge/coverage-59%25-yellow)](pyproject.toml)
+[![coverage](https://img.shields.io/badge/coverage-65%25-yellow)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 Built on LangGraph + LiteLLM + Ollama. No API keys required for local models. Runs entirely on your machine.
@@ -344,7 +344,7 @@ pip install pytest pytest-mock
 python3 -m pytest tests/ -v
 ```
 
-209 tests. Covers routing, fast-path heuristics, confidence escalation, task decomposition, agent delegation, budget enforcement, codebase indexing, file-watcher, eval harness, synthesizer, plugins, config, executor security. No Ollama required (all LLM calls mocked).
+339 tests. Covers routing, fast-path heuristics, confidence escalation, task decomposition, agent delegation, budget enforcement, codebase indexing, file-watcher, eval harness, synthesizer, plugins, config, executor security. No Ollama required (all LLM calls mocked).
 
 ---
 
@@ -374,7 +374,7 @@ agents/
 │   └── plugins.py       # plugin loader
 ├── plugins/
 │   └── translator.py    # example: TRANSLATOR agent
-├── tests/               # 209 tests (no Ollama required)
+├── tests/               # 339 tests (no Ollama required)
 ├── web/
 │   ├── app.py           # FastAPI + SSE task runner
 │   └── templates/       # Jinja2 HTML
@@ -410,7 +410,7 @@ Main advantage: small, hackable, local-first. You can read and understand the wh
 
 ## Contributing
 
-PRs welcome. Run `pytest tests/` before submitting — all 209 must pass.
+PRs welcome. Run `pytest tests/` before submitting — all 339 must pass.
 
 ## License
 
