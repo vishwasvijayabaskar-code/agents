@@ -30,6 +30,7 @@ def make_state(**overrides) -> dict:
         "tokens_used": 0,
         "subtasks": None,
         "current_subtask": 0,
+        "project_context_path": None,
     }
     base.update(overrides)
     return base

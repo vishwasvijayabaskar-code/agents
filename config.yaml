@@ -14,6 +14,7 @@ limits:
   cache_ttl_hours: 24     # 0 = disable result caching
   llm_retries: 2          # retries on transient LLM errors (connection/timeout/5xx)
   save_traces: true       # write replayable run traces to runs/ (--list-runs, --replay)
+  fanout_workers: 3       # max concurrent workers for parallel fan-out tasks
 
 executor:
   enabled: true

@@ -215,6 +215,82 @@ Rules:
     return None
 
 
+# --- Parallel fan-out (independent subtasks) ---
+
+_FANOUT_SIGNALS = (
+    "in parallel",
+    "simultaneously",
+    "separately",
+    "at the same time",
+    "and also",
+    "as well as",
+)
+
+
+def _is_fanout(task: str) -> bool:
+    """True if the task asks for independent work that can run concurrently."""
+    t = task.lower()
+    if any(kw in t for kw in _MULTI_HOP):
+        return False  # sequential dependency wins — not fan-out
+    return len(task) > 40 and any(kw in t for kw in _FANOUT_SIGNALS)
+
+
+def _decompose_fanout(task: str, model: str) -> list[dict] | None:
+    """Split a task into 2-4 INDEPENDENT subtasks that can run in parallel.
+    Returns list of {"route", "task"} or None."""
+    system = """You are a task splitter. Break the task into 2-4 INDEPENDENT subtasks
+that can run in parallel (no subtask depends on another's output).
+Output ONLY a valid JSON array. No explanation. No markdown.
+Each subtask has "route" (RESEARCHER, CODER, FAST, CLAUDE) and "task".
+
+Example:
+[{"route": "FAST", "task": "summarize the history of Python"},
+ {"route": "FAST", "task": "summarize the history of Rust"}]
+
+Rules: max 4 subtasks; each must be fully self-contained and independent."""
+    try:
+        raw = _call(model, system, f"Task: {task}").strip()
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+        match = re.search(r"\[.*\]", raw, re.DOTALL)
+        if match:
+            subtasks = json.loads(match.group())
+            if isinstance(subtasks, list) and len(subtasks) >= 2:
+                if all(isinstance(s, dict) and "route" in s and "task" in s for s in subtasks):
+                    return subtasks[:4]
+    except Exception:
+        pass
+    return None
+
+
+def _run_fanout(state: AgentState, subtasks: list[dict]) -> dict[str, str]:
+    """Run independent subtasks concurrently. Returns {label: output}."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from helpers.delegation import execute_delegation
+
+    try:
+        max_workers = max(1, int(cfg.get("limits", "fanout_workers", 3)))
+    except Exception:
+        max_workers = 3
+    targets = _get_delegation_targets()
+    results: dict[str, str] = {}
+
+    def _one(idx_sub):
+        idx, sub = idx_sub
+        route = (sub.get("route") or "FAST").upper()
+        node_fn = targets.get(route, targets["FAST"])
+        label = f"{route}#{idx + 1}"
+        try:
+            return label, execute_delegation(route, sub["task"], node_fn, state)  # type: ignore[arg-type]
+        except Exception as e:
+            return label, f"[{label} error: {e}]"
+
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(subtasks))) as pool:
+        for label, output in pool.map(_one, list(enumerate(subtasks))):
+            results[label] = output
+    return results
+
+
 # --- Orchestrator node ---
 
 
@@ -259,6 +335,29 @@ def orchestrator(state: AgentState) -> AgentState:
             state["subtasks"] = None
             state["done"] = True
             state["history"].append("Orchestrator → all subtasks complete")
+            return state
+
+    # --- Parallel fan-out: independent subtasks run concurrently ---
+    if state.get("iterations", 0) == 0 and not state.get("agent_outputs") and _is_fanout(state["task"]):
+        model = cfg.model("orchestrator")
+        fo = _decompose_fanout(state["task"], model)
+        if fo:
+            state["fanout_tasks"] = {"subtasks": fo}
+            results = _run_fanout(state, fo)
+            if not state.get("agent_outputs"):
+                state["agent_outputs"] = {}
+            state["agent_outputs"].update(results)
+            state["result"] = "\n\n".join(f"[{k}]\n{v}" for k, v in results.items())
+            state["iterations"] = state.get("iterations", 0) + 1
+            state["history"].append(
+                f"Orchestrator → fan-out {len(fo)} parallel subtasks: " + ", ".join(s["route"] for s in fo)
+            )
+            # >1 output → let SYNTHESIZE merge; else done
+            if len(results) > 1:
+                state["route"] = "SYNTHESIZE"
+                state["done"] = False
+            else:
+                state["done"] = True
             return state
 
     # Fast-path: skip LLM for simple/obvious tasks on first iteration
@@ -440,6 +539,11 @@ def route_decision(state: AgentState) -> str:
     agent_outputs = state.get("agent_outputs") or {}
     route = state.get("route")
     workers = _worker_nodes()
+
+    # Explicit SYNTHESIZE (e.g. after parallel fan-out, whose output keys
+    # aren't plain worker names) — honor it directly.
+    if route == "SYNTHESIZE" and not state.get("done") and "SYNTHESIZE" not in agent_outputs:
+        return "SYNTHESIZE"
 
     # Iteration cap: higher for subtask mode (2 per subtask + 1 for decomposition)
     subtasks = state.get("subtasks")

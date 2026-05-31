@@ -26,6 +26,7 @@ Settings live in `config.yaml`. Secrets go in `.env`. Environment variables over
 | `cache_ttl_hours` | `24` | Result-cache freshness window; 0 = disable caching. |
 | `llm_retries` | `2` | Retries on transient LLM errors (connection/timeout/5xx). |
 | `save_traces` | `True` | Write replayable run traces to runs/ (--list-runs, --replay). |
+| `fanout_workers` | `3` | Max concurrent workers for parallel fan-out tasks. |
 
 ## `executor`
 

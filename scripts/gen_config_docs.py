@@ -25,6 +25,7 @@ DESCRIPTIONS = {
     ("limits", "cache_ttl_hours"): "Result-cache freshness window; 0 = disable caching.",
     ("limits", "llm_retries"): "Retries on transient LLM errors (connection/timeout/5xx).",
     ("limits", "save_traces"): "Write replayable run traces to runs/ (--list-runs, --replay).",
+    ("limits", "fanout_workers"): "Max concurrent workers for parallel fan-out tasks.",
     ("executor", "enabled"): "Allow the EXECUTOR node to run shell commands.",
     ("executor", "timeout"): "Per-command timeout in seconds.",
     ("executor", "blocked_patterns"): "Substrings that block a command from running.",
