@@ -1,4 +1,4 @@
-.PHONY: install test lint fix run web eval demo clean help
+.PHONY: install test cov lint fix run web eval demo clean help
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -9,8 +9,13 @@ install:  ## Install dependencies
 test:  ## Run the test suite (no Ollama required)
 	python3 -m pytest tests/ -q
 
-lint:  ## Check lint with ruff
+cov:  ## Run tests with coverage report
+	python3 -m pytest tests/ -q --cov --cov-report=term-missing
+
+lint:  ## Check lint, format, and types
 	ruff check .
+	ruff format --check .
+	mypy helpers/ nodes/ state.py main.py graph.py mcp_server.py web/ watch.py evals/
 
 fix:  ## Autofix lint issues
 	ruff check --fix .

@@ -5,6 +5,7 @@
 [![Tests](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml/badge.svg)](https://github.com/vishwasvijayabaskar-code/agents/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Ollama](https://img.shields.io/badge/runs%20on-Ollama-orange)](https://ollama.com)
+[![coverage](https://img.shields.io/badge/coverage-59%25-yellow)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 Built on LangGraph + LiteLLM + Ollama. No API keys required for local models. Runs entirely on your machine.
