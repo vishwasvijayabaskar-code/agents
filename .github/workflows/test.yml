@@ -36,5 +36,8 @@ jobs:
       - name: Type check (mypy)
         run: mypy helpers/ nodes/ state.py main.py graph.py mcp_server.py web/ watch.py evals/
 
+      - name: CONFIG.md up to date
+        run: python3 scripts/gen_config_docs.py --check
+
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short --cov --cov-report=term-missing --cov-fail-under=55

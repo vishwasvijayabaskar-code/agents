@@ -1,0 +1,31 @@
+site_name: agents
+site_description: Local multi-agent AI orchestration on Ollama
+repo_url: https://github.com/vishwasvijayabaskar-code/agents
+repo_name: vishwasvijayabaskar-code/agents
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: blue
+      accent: light blue
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Configuration: config.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - tables
+  - toc:
+      permalink: true

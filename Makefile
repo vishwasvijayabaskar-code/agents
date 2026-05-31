@@ -1,4 +1,4 @@
-.PHONY: install test cov lint fix run web eval demo completions clean help
+.PHONY: install test cov lint fix run web eval demo docs docs-serve completions clean help
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -31,6 +31,15 @@ eval:  ## Run the eval/benchmark suite (needs Ollama)
 
 demo:  ## Regenerate demo.gif (needs vhs + warm Ollama)
 	vhs demo.tape
+
+docs:  ## Build the docs site (needs: pip install mkdocs-material)
+	python3 scripts/gen_config_docs.py
+	python3 scripts/sync_docs.py
+	mkdocs build --strict
+
+docs-serve:  ## Serve docs locally at :8001
+	$(MAKE) docs
+	mkdocs serve -a localhost:8001
 
 completions:  ## Print shell-completion setup (needs: pip install argcomplete)
 	@echo '# bash: add to ~/.bashrc'
