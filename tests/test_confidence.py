@@ -144,6 +144,23 @@ class TestConfidenceEscalationIntegration:
         # _score_output should NOT have been called
         mock_score.assert_not_called()
 
+    def test_forced_route_skips_confidence_scoring(self):
+        """--route forced tasks shouldn't auto-escalate — user chose the agent."""
+        state = make_state(
+            task="explain hash maps",
+            iterations=1,
+            agent_outputs={"FAST": "A hash map stores key-value pairs."},
+            history=["Orchestrator → forced route=FAST"],
+        )
+        with patch("nodes.orchestrator._score_output") as mock_score, \
+             patch("nodes.orchestrator._call", return_value='{"route": null, "done": true}'), \
+             patch("nodes.orchestrator._relevant_memory", return_value=""), \
+             patch("nodes.orchestrator._cache_lookup", return_value=None):
+            result = orchestrator(state)
+
+        mock_score.assert_not_called()
+        assert not any("confidence escalation" in h for h in result["history"])
+
     def test_escalation_skipped_if_target_already_ran(self):
         """FAST score=2 but CODER already ran → skip escalation."""
         state = make_state(

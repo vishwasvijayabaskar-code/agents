@@ -9,6 +9,8 @@
 
 Built on LangGraph + LiteLLM + Ollama. No API keys required for local models. Runs entirely on your machine.
 
+![demo](demo.gif)
+
 ---
 
 ## What it does
