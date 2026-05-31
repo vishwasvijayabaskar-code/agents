@@ -91,3 +91,67 @@ class TestConfig:
         instance._data = {}
         result = instance.model("fast")
         assert isinstance(result, str)
+
+
+class TestConfigValidation:
+    def test_valid_config_no_errors(self):
+        cfg = _make_cfg()
+        errors, warnings = cfg.validate()
+        assert errors == []
+
+    def test_empty_config_valid(self):
+        cfg = _make_cfg({})
+        errors, warnings = cfg.validate()
+        assert errors == []
+
+    def test_empty_model_string_errors(self):
+        cfg = _make_cfg({"models": {"coder": ""}})
+        errors, _ = cfg.validate()
+        assert any("models.coder" in e for e in errors)
+
+    def test_non_string_model_errors(self):
+        cfg = _make_cfg({"models": {"fast": 123}})
+        errors, _ = cfg.validate()
+        assert any("models.fast" in e for e in errors)
+
+    def test_non_numeric_limit_errors(self):
+        cfg = _make_cfg({"limits": {"max_iterations": "three"}})
+        errors, _ = cfg.validate()
+        assert any("limits.max_iterations" in e for e in errors)
+
+    def test_bool_limit_rejected(self):
+        cfg = _make_cfg({"limits": {"llm_retries": True}})
+        errors, _ = cfg.validate()
+        assert any("limits.llm_retries" in e for e in errors)
+
+    def test_numeric_limit_ok(self):
+        cfg = _make_cfg({"limits": {"max_tokens_per_task": 50000}})
+        errors, _ = cfg.validate()
+        assert errors == []
+
+    def test_executor_enabled_must_be_bool(self):
+        cfg = _make_cfg({"executor": {"enabled": "yes"}})
+        errors, _ = cfg.validate()
+        assert any("executor.enabled" in e for e in errors)
+
+    def test_executor_timeout_must_be_numeric(self):
+        cfg = _make_cfg({"executor": {"timeout": "60s"}})
+        errors, _ = cfg.validate()
+        assert any("executor.timeout" in e for e in errors)
+
+    def test_blocked_patterns_must_be_list(self):
+        cfg = _make_cfg({"executor": {"blocked_patterns": "rm -rf"}})
+        errors, _ = cfg.validate()
+        assert any("blocked_patterns" in e for e in errors)
+
+    def test_unknown_section_warns_not_errors(self):
+        cfg = _make_cfg({"bogus_section": {"x": 1}})
+        errors, warnings = cfg.validate()
+        assert errors == []
+        assert any("bogus_section" in w for w in warnings)
+
+    def test_web_section_known(self):
+        cfg = _make_cfg({"web": {"auth_token": "secret"}})
+        errors, warnings = cfg.validate()
+        assert errors == []
+        assert not any("web" in w for w in warnings)

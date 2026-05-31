@@ -326,6 +326,16 @@ if __name__ == "__main__":
                         help="Run eval suite (optionally filter by tags: --eval coder fast)")
     args = parser.parse_args()
 
+    # Validate config.yaml before doing anything else
+    cfg_errors, cfg_warnings = cfg.validate()
+    for w in cfg_warnings:
+        console.print(f"[bold yellow]Config warning: {w}[/bold yellow]")
+    if cfg_errors:
+        console.print("[bold red]Invalid config.yaml:[/bold red]")
+        for e in cfg_errors:
+            console.print(f"[bold red]  • {e}[/bold red]")
+        sys.exit(1)
+
     if args.stats:
         show_stats()
         sys.exit(0)
