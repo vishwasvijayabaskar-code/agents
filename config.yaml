@@ -12,6 +12,7 @@ limits:
   project_max_bytes: 150000
   max_tokens_per_task: 0  # 0 = unlimited. Set e.g. 50000 to enforce budget
   cache_ttl_hours: 24     # 0 = disable result caching
+  llm_retries: 2          # retries on transient LLM errors (connection/timeout/5xx)
 
 executor:
   enabled: true
