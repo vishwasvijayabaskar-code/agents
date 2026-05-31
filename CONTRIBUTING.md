@@ -47,6 +47,17 @@ ruff check --fix .   # autofix
 
 CI runs both tests and ruff on every push/PR.
 
+### pre-commit (optional but recommended)
+
+```bash
+pip install pre-commit
+pre-commit install      # hooks now run on every commit
+pre-commit run --all-files   # run once across the repo
+```
+
+Hooks: ruff (lint+fix), ruff-format, end-of-file-fixer, trailing-whitespace,
+check-yaml, large-file + merge-conflict guards.
+
 ## Code style
 
 - Standard library + the deps already in `requirements.txt`. Don't add heavy deps without discussion.
