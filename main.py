@@ -29,6 +29,43 @@ OUTPUT_BASE = Path(__file__).parent / "output"
 SESSIONS_DIR = Path(__file__).parent / "sessions"
 USAGE_FILE = Path(__file__).parent / "usage.jsonl"
 
+__version__ = "0.1.0"
+
+
+def get_version() -> str:
+    """Return package version (installed metadata if available, else __version__)."""
+    try:
+        from importlib.metadata import version
+        return version("agents")
+    except Exception:
+        return __version__
+
+
+def list_agents() -> str:
+    """Return a human-readable list of built-in + plugin agents."""
+    builtins = {
+        "FAST": "quick answers, summaries",
+        "CODER": "code generation, web design",
+        "RESEARCHER": "web search + page reading",
+        "EXECUTOR": "runs shell commands, self-fixes",
+        "CLAUDE": "deep reasoning, architecture (needs ANTHROPIC_API_KEY)",
+        "CODEX": "autonomous multi-file builds (Codex CLI)",
+        "CODEBASE": "answer questions about an indexed project",
+        "SYNTHESIZE": "merges multi-agent outputs",
+    }
+    lines = ["Built-in agents:"]
+    for name, desc in builtins.items():
+        lines.append(f"  {name:12} {desc}")
+    try:
+        from helpers.plugins import get_plugin_descriptions, load_plugins
+        load_plugins()
+        plugin_info = get_plugin_descriptions()
+        if plugin_info and plugin_info.strip():
+            lines.append(plugin_info.rstrip())
+    except Exception:
+        pass
+    return "\n".join(lines)
+
 MAX_TASK_CHARS = cfg.get("limits", "max_task_chars", 10_000)
 
 def check_ollama_health():
@@ -141,7 +178,10 @@ def run(
         "project_context_path": str(Path(project_path).resolve()) if project_path else None,
     }
 
+    from helpers.logging import is_verbose, vlog
+
     print_task_header(task)
+    vlog(f"task: {task[:80]!r} (force_route={force_route}, budget={max_tokens})", tag="run")
     with token_budget(max_tokens):
         try:
             result = graph.invoke(state)
@@ -156,6 +196,10 @@ def run(
         result["tokens_used"] = get_budget_used()
 
     agents_used = list(result.get("agent_outputs", {}).keys())
+    if is_verbose():
+        for h in result.get("history", []):
+            vlog(h, tag="trace")
+        vlog(f"agents used: {agents_used}; tokens={result.get('tokens_used', 0)}", tag="run")
     print_separator()
     print_agents_used(agents_used)
     if max_tokens > 0:
@@ -324,7 +368,23 @@ if __name__ == "__main__":
                         help="Index a codebase for semantic search (use with --project)")
     parser.add_argument("--eval", nargs="*", metavar="TAG",
                         help="Run eval suite (optionally filter by tags: --eval coder fast)")
+    parser.add_argument("--version", "-V", action="store_true", help="Print version and exit")
+    parser.add_argument("--list-agents", action="store_true", help="List available agents and exit")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose diagnostics to stderr")
     args = parser.parse_args()
+
+    if args.version:
+        print(f"agents {get_version()}")
+        sys.exit(0)
+
+    if args.list_agents:
+        print(list_agents())
+        sys.exit(0)
+
+    if args.verbose:
+        from helpers.logging import enable_verbose, vlog
+        enable_verbose(True)
+        vlog("verbose logging enabled")
 
     # Validate config.yaml before doing anything else
     cfg_errors, cfg_warnings = cfg.validate()
