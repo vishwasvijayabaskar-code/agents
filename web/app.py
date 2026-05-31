@@ -32,6 +32,7 @@ from helpers.config import cfg
 BASE_DIR = Path(__file__).parent.parent
 SESSIONS_DIR = BASE_DIR / "sessions"
 USAGE_FILE = BASE_DIR / "usage.jsonl"
+RUNS_DIR = BASE_DIR / "runs"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -267,7 +268,8 @@ async def run_task(
             _web_sessions.setdefault(sid, []).append(
                 {
                     "task": task,
-                    "result": result_captured["result"][:500],
+                    # Full result kept; the index panel shows a preview, /runs has detail
+                    "result": result_captured["result"],
                     "agents": result_captured["agents"],
                     "ts": datetime.now().isoformat(),
                 }
@@ -440,6 +442,38 @@ async def api_graph():
 @app.get("/graph", response_class=HTMLResponse)
 async def graph_page(request: Request):
     return templates.TemplateResponse(request=request, name="graph.html", context={})
+
+
+def _load_traces(limit: int = 50) -> list[dict]:
+    if not RUNS_DIR.exists():
+        return []
+    out = []
+    for p in sorted(RUNS_DIR.glob("*.json"), reverse=True)[:limit]:
+        try:
+            out.append(json.loads(p.read_text()))
+        except Exception:
+            pass
+    return out
+
+
+@app.get("/runs", response_class=HTMLResponse)
+async def runs_page(request: Request):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="runs.html", context={"runs": _load_traces()})
+
+
+@app.get("/run/{run_id}", response_class=HTMLResponse)
+async def run_detail(request: Request, run_id: str):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=302)
+    # Guard against path traversal in the id
+    safe = "".join(c for c in run_id if c.isalnum() or c in ("_", "-"))
+    path = RUNS_DIR / f"{safe}.json"
+    if not path.exists():
+        return HTMLResponse("Run not found", status_code=404)
+    trace = json.loads(path.read_text())
+    return templates.TemplateResponse(request=request, name="run_detail.html", context={"run": trace})
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}agents — runs{% endblock %}
+
+{% block content %}
+<h2>Run history</h2>
+{% if not runs %}
+<div class="card"><span class="muted">No runs yet. Run a task and it'll appear here.</span></div>
+{% else %}
+<div class="card">
+  <table>
+    <thead><tr><th>When</th><th>Agents</th><th>Task</th><th>Tokens</th></tr></thead>
+    <tbody>
+      {% for r in runs %}
+      <tr style="cursor:pointer" onclick="window.location='/run/{{ r.id }}'">
+        <td class="mono">{{ r.timestamp[:19].replace('T',' ') }}</td>
+        <td>{% for a in r.agents %}<span class="badge badge-blue">{{ a }}</span> {% endfor %}</td>
+        <td>{{ r.task[:80] }}{% if r.task|length > 80 %}…{% endif %}</td>
+        <td class="mono">{{ r.tokens_used }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

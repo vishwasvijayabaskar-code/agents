@@ -101,3 +101,40 @@ class TestEndpoints:
         r = client.get("/api/graph")
         assert r.status_code == 200
         assert "CODEBASE" in r.json()["mermaid"]
+
+    def test_runs_page_renders(self):
+        with patch("web.app._load_traces", return_value=[]):
+            r = client.get("/runs")
+        assert r.status_code == 200
+        assert "Run history" in r.text
+
+    def test_run_detail_not_found(self, tmp_path):
+        with patch("web.app.RUNS_DIR", tmp_path):
+            r = client.get("/run/nonexistent")
+        assert r.status_code == 404
+
+    def test_run_detail_renders_full_result(self, tmp_path):
+        import json as _json
+
+        (tmp_path / "abc123.json").write_text(
+            _json.dumps(
+                {
+                    "id": "abc123",
+                    "task": "explain X",
+                    "result": "FULL " * 200,  # long, must not be truncated
+                    "agents": ["FAST"],
+                    "history": ["Orchestrator → forced route=FAST"],
+                    "tokens_used": 10,
+                    "timestamp": "2026-05-31T12:00:00",
+                }
+            )
+        )
+        with patch("web.app.RUNS_DIR", tmp_path):
+            r = client.get("/run/abc123")
+        assert r.status_code == 200
+        assert r.text.count("FULL") >= 200  # full result rendered, not truncated
+
+    def test_run_detail_rejects_path_traversal(self, tmp_path):
+        with patch("web.app.RUNS_DIR", tmp_path):
+            r = client.get("/run/..%2f..%2fetc%2fpasswd")
+        assert r.status_code in (404, 400)

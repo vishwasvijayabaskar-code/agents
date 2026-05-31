@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}agents — run {{ run.id }}{% endblock %}
+
+{% block content %}
+<a href="/runs" class="muted" style="font-size:12px;">← all runs</a>
+<h2 style="margin-top:8px;">{{ run.task }}</h2>
+
+<div class="card">
+  <div class="muted" style="font-size:12px; margin-bottom:8px;">
+    {% for a in run.agents %}<span class="badge badge-blue">{{ a }}</span> {% endfor %}
+    · {{ run.tokens_used }} tokens · {{ run.timestamp[:19].replace('T',' ') }}
+  </div>
+  {% if run.history %}
+  <h3>Routing trace</h3>
+  <ul class="muted" style="font-size:13px; margin:0 0 12px 18px;">
+    {% for h in run.history %}<li>{{ h }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<h3>Result</h3>
+<div id="output">{{ run.result }}</div>
+{% endblock %}
