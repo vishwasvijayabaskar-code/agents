@@ -371,6 +371,7 @@ if __name__ == "__main__":
     parser.add_argument("--version", "-V", action="store_true", help="Print version and exit")
     parser.add_argument("--list-agents", action="store_true", help="List available agents and exit")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose diagnostics to stderr")
+    parser.add_argument("--clear-cache", action="store_true", help="Clear vector memory / result cache and exit")
     args = parser.parse_args()
 
     if args.version:
@@ -379,6 +380,12 @@ if __name__ == "__main__":
 
     if args.list_agents:
         print(list_agents())
+        sys.exit(0)
+
+    if args.clear_cache:
+        from helpers.memory import clear_cache
+        n = clear_cache()
+        console.print(f"[info]Cleared {n} cached entr{'y' if n == 1 else 'ies'}.[/info]")
         sys.exit(0)
 
     if args.verbose:
