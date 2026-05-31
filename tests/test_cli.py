@@ -2,14 +2,14 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from helpers.logging import enable_verbose, is_verbose, vlog
-from main import get_version, list_agents
+from main import doctor, get_version, init_project, list_agents
 
 
 class TestVersion:
@@ -72,3 +72,60 @@ class TestVerboseLogging:
         enable_verbose(True)
         vlog("msg", tag="orchestrator")
         assert "orchestrator" in capsys.readouterr().err
+
+
+class TestDoctor:
+    def test_healthy_returns_zero(self):
+        fake = MagicMock()
+        fake.read.return_value = b'{"models": [{"name": "qwen2.5:7b"}]}'
+        fake.__enter__ = lambda s: fake
+        fake.__exit__ = lambda s, *a: None
+        with (
+            patch("urllib.request.urlopen", return_value=fake),
+            patch("main.cfg.validate", return_value=([], [])),
+            patch("main.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}),
+            patch.dict("os.environ", {"ANTHROPIC_API_KEY": "x"}),
+        ):
+            assert doctor() == 0
+
+    def test_unreachable_ollama_flags_problem(self):
+        with (
+            patch("urllib.request.urlopen", side_effect=OSError("refused")),
+            patch("main.cfg.validate", return_value=([], [])),
+            patch("main.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}),
+        ):
+            assert doctor() >= 1
+
+    def test_config_errors_counted(self):
+        fake = MagicMock()
+        fake.read.return_value = b'{"models": []}'
+        fake.__enter__ = lambda s: fake
+        fake.__exit__ = lambda s, *a: None
+        with (
+            patch("urllib.request.urlopen", return_value=fake),
+            patch("main.cfg.validate", return_value=(["bad key"], [])),
+            patch("main.cfg.list_models", return_value={}),
+        ):
+            assert doctor() >= 1
+
+
+class TestInitProject:
+    def test_creates_env_from_example(self, tmp_path, monkeypatch):
+        import main
+
+        monkeypatch.setattr(main, "__file__", str(tmp_path / "main.py"))
+        (tmp_path / ".env.example").write_text("ANTHROPIC_API_KEY=sk-...\n")
+        with patch("main.cfg.list_models", return_value={"fast": "ollama/qwen2.5:7b"}):
+            init_project()
+        assert (tmp_path / ".env").exists()
+        assert "ANTHROPIC_API_KEY" in (tmp_path / ".env").read_text()
+
+    def test_does_not_clobber_existing_env(self, tmp_path, monkeypatch):
+        import main
+
+        monkeypatch.setattr(main, "__file__", str(tmp_path / "main.py"))
+        (tmp_path / ".env.example").write_text("X=1\n")
+        (tmp_path / ".env").write_text("KEEP=me\n")
+        with patch("main.cfg.list_models", return_value={}):
+            init_project()
+        assert (tmp_path / ".env").read_text() == "KEEP=me\n"

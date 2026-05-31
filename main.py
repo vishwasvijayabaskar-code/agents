@@ -70,6 +70,82 @@ def list_agents() -> str:
     return "\n".join(lines)
 
 
+def doctor() -> int:
+    """Diagnose the environment. Returns count of problems found (0 = healthy)."""
+    import urllib.request
+
+    problems = 0
+    console.print("[bold]agents doctor[/bold]\n")
+
+    # 1. Config validity
+    errors, warnings = cfg.validate()
+    if errors:
+        problems += len(errors)
+        console.print("[bold red]✗ config.yaml errors:[/bold red]")
+        for e in errors:
+            console.print(f"    • {e}")
+    else:
+        console.print("[green]✓ config.yaml valid[/green]")
+    for w in warnings:
+        console.print(f"[yellow]  ! {w}[/yellow]")
+
+    # 2. Ollama reachability + models
+    base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    try:
+        with urllib.request.urlopen(f"{base}/api/tags", timeout=3) as resp:
+            available = {m["name"] for m in json.loads(resp.read()).get("models", [])}
+        console.print(f"[green]✓ Ollama reachable[/green] [info]({base})[/info]")
+        for node, model in cfg.list_models().items():
+            if model.startswith("ollama/"):
+                name = model.replace("ollama/", "")
+                if name in available or f"{name}:latest" in available:
+                    console.print(f"[green]  ✓ {node}: {model}[/green]")
+                else:
+                    problems += 1
+                    console.print(f"[yellow]  ! {node}: {model} not pulled → ollama pull {name}[/yellow]")
+    except Exception:
+        problems += 1
+        console.print(f"[bold red]✗ Ollama not reachable at {base}[/bold red] [info](start: ollama serve)[/info]")
+
+    # 3. CLAUDE credentials (optional)
+    import shutil
+
+    if os.getenv("ANTHROPIC_API_KEY") or shutil.which("claude"):
+        console.print("[green]✓ CLAUDE available (API key or claude CLI)[/green]")
+    else:
+        console.print("[yellow]  ! CLAUDE unavailable (no ANTHROPIC_API_KEY, no claude CLI) — optional[/yellow]")
+
+    console.print()
+    if problems == 0:
+        console.print("[bold green]All checks passed.[/bold green]")
+    else:
+        console.print(f"[bold yellow]{problems} issue(s) found.[/bold yellow]")
+    return problems
+
+
+def init_project() -> None:
+    """Scaffold local setup: .env from example, print model-pull commands."""
+    root = Path(__file__).parent
+    env = root / ".env"
+    env_example = root / ".env.example"
+    if env.exists():
+        console.print("[info].env already exists — leaving it untouched.[/info]")
+    elif env_example.exists():
+        env.write_text(env_example.read_text())
+        console.print(
+            "[green]✓ Created .env from .env.example[/green] [info](fill in ANTHROPIC_API_KEY if using CLAUDE)[/info]"
+        )
+    else:
+        console.print("[yellow]No .env.example found; skipping .env scaffold.[/yellow]")
+
+    ollama_models = sorted({m.replace("ollama/", "") for m in cfg.list_models().values() if m.startswith("ollama/")})
+    if ollama_models:
+        console.print("\n[bold]Pull the configured Ollama models:[/bold]")
+        for m in ollama_models:
+            console.print(f"    ollama pull {m}")
+    console.print('\n[info]Then run:  ./run "explain how a hash map works"[/info]')
+
+
 MAX_TASK_CHARS = cfg.get("limits", "max_task_chars", 10_000)
 
 
@@ -400,7 +476,16 @@ if __name__ == "__main__":
     parser.add_argument("--list-agents", action="store_true", help="List available agents and exit")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose diagnostics to stderr")
     parser.add_argument("--clear-cache", action="store_true", help="Clear vector memory / result cache and exit")
+    parser.add_argument("--doctor", action="store_true", help="Diagnose environment (Ollama, models, config, keys)")
+    parser.add_argument("--init", action="store_true", help="Scaffold .env + print model-pull commands")
     args = parser.parse_args()
+
+    if args.doctor:
+        sys.exit(1 if doctor() else 0)
+
+    if args.init:
+        init_project()
+        sys.exit(0)
 
     if args.version:
         print(f"agents {get_version()}")
