@@ -42,6 +42,9 @@ agents-web = "web.app:main"
 packages = ["helpers", "nodes", "web", "plugins", "evals"]
 py-modules = ["main", "graph", "state", "ui", "mcp_server", "watch"]
 
+[tool.setuptools.package-data]
+web = ["templates/*.html", "static/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

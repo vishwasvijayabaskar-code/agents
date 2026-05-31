@@ -81,6 +81,18 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the request lifecycle, state shape, a
 - [ ] Docs updated if you changed CLI flags, config keys, or agent behavior
 - [ ] Commit messages are descriptive
 
+## Releasing (maintainers)
+
+```bash
+python -m build              # builds wheel + sdist into dist/
+twine check dist/*           # validate metadata
+# twine upload dist/*        # publish to PyPI (requires credentials)
+```
+
+The wheel bundles `web/templates/*.html`; the sdist also includes `config.yaml`
+(via MANIFEST.in). Bump `version` in `pyproject.toml` + `__version__` in `main.py`
+and add a `CHANGELOG.md` entry before tagging.
+
 ## Reporting bugs / requesting features
 
 Use the issue templates. Include your OS, Python version, Ollama version, and the models configured in `config.yaml`.

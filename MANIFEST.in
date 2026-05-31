@@ -1,0 +1,11 @@
+include config.yaml
+include README.md LICENSE CHANGELOG.md
+include requirements.txt
+recursive-include web/templates *.html
+recursive-include web/static *
+prune chroma
+prune output
+prune sessions
+prune runs
+prune evals/results
+global-exclude *.pyc __pycache__
