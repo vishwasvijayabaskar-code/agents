@@ -178,6 +178,8 @@ All other settings in `config.yaml` — models, token budgets, caching.
 #   watch/job.task   → YAML {task, route, project}
 #   watch/page.url   → fetch + summarize URL
 #   watch/buggy.py   → code review
+# Sample inputs live in examples/ — see examples/README.md
+cp examples/task.txt watch/
 
 # Run the eval/benchmark suite
 ./run --eval                # full suite

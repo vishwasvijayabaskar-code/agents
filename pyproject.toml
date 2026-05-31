@@ -48,7 +48,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
-exclude = ["chroma", "output", "sessions", "__pycache__", ".venv", "evals/results"]
+exclude = ["chroma", "output", "sessions", "__pycache__", ".venv", "evals/results", "examples"]
 
 [tool.ruff.lint]
 # E/F = pyflakes+pycodestyle, I = isort, UP = pyupgrade, B = bugbear

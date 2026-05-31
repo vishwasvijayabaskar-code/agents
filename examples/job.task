@@ -1,0 +1,2 @@
+task: Build a Python CLI that fetches the current weather for a city using a public API and prints it as a table
+route: CODER
