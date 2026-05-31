@@ -34,6 +34,11 @@
   <span id="status-text"></span>
 </div>
 
+<div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px;">
+  <button type="button" class="btn btn-secondary" id="copy-btn" style="display:none; padding:4px 12px; font-size:12px;">Copy</button>
+  <a href="/api/session/export" class="btn btn-secondary" style="padding:4px 12px; font-size:12px; text-decoration:none;">Export session</a>
+</div>
+
 <div id="output" class="empty">Output will appear here…</div>
 
 <div id="agents-used" style="margin-top:10px; display:none;">
@@ -66,6 +71,16 @@
   const runBtn = document.getElementById('run-btn');
   const agentsUsed = document.getElementById('agents-used');
   const agentsList = document.getElementById('agents-list');
+  const copyBtn = document.getElementById('copy-btn');
+
+  // Copy output to clipboard
+  copyBtn.addEventListener('click', function() {
+    navigator.clipboard.writeText(output.textContent || '').then(function() {
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = 'Copied!';
+      setTimeout(function() { copyBtn.textContent = orig; }, 1200);
+    });
+  });
 
   let es = null;
 
@@ -97,6 +112,7 @@
     output.textContent = '';
     agentsUsed.style.display = 'none';
     agentsList.innerHTML = '';
+    copyBtn.style.display = 'inline-flex';
     setRunning(true);
     statusText.textContent = 'Running…';
 

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}agents — health{% endblock %}
+
+{% block content %}
+<h2>System Health</h2>
+
+<div class="card">
+  <h3>Ollama</h3>
+  {% if status.ollama_reachable %}
+    <span class="badge badge-green">reachable</span>
+    <span class="muted mono">{{ status.base }}</span>
+  {% else %}
+    <span class="badge badge-warn">unreachable</span>
+    <span class="muted mono">{{ status.base }}</span>
+    {% if status.error %}<div class="error-text" style="margin-top:8px;">{{ status.error }}</div>{% endif %}
+    <div class="muted" style="margin-top:8px;">Start it with <code>ollama serve</code></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Configured models</h3>
+  <table>
+    <thead><tr><th>Node</th><th>Model</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for node, info in status.models.items() %}
+      <tr>
+        <td class="mono">{{ node }}</td>
+        <td class="mono">{{ info.model }}</td>
+        <td>
+          {% if info.present %}
+            <span class="badge badge-green">available</span>
+          {% else %}
+            <span class="badge badge-warn">missing</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="muted" style="margin-top:10px;">
+    Pull a missing Ollama model with <code>ollama pull &lt;name&gt;</code>.
+  </div>
+</div>
+{% endblock %}

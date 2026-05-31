@@ -301,6 +301,75 @@ async def api_session_history(request: Request):
     return {"tasks": _web_sessions.get(sid, [])}
 
 
+def _session_to_markdown(tasks: list[dict]) -> str:
+    """Render a web session's task list as a Markdown document."""
+    lines = ["# agents session export", f"\n_{len(tasks)} task(s), exported {datetime.now().isoformat(timespec='seconds')}_\n"]
+    for i, t in enumerate(tasks, 1):
+        agents = ", ".join(t.get("agents", [])) or "—"
+        lines.append(f"\n## {i}. {t.get('task', '')}\n")
+        lines.append(f"- **Agents:** {agents}")
+        lines.append(f"- **When:** {t.get('ts', '')}\n")
+        lines.append(f"{t.get('result', '')}\n")
+    return "\n".join(lines)
+
+
+@app.get("/api/session/export")
+async def api_session_export(request: Request):
+    """Download the current browser session's history as a Markdown file."""
+    if not _is_authenticated(request):
+        raise HTTPException(status_code=401)
+    sid = _get_web_session_id(request)
+    tasks = _web_sessions.get(sid, [])
+    md = _session_to_markdown(tasks)
+    fname = f"agents-session-{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    return HTMLResponse(
+        content=md,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+def _health_status() -> dict:
+    """Check Ollama reachability + which configured models are present."""
+    import urllib.request
+
+    base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    configured = cfg.list_models()
+    status = {"ollama_reachable": False, "base": base, "models": {}}
+    try:
+        req = urllib.request.Request(f"{base}/api/tags")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read())
+        available = {m["name"] for m in data.get("models", [])}
+        status["ollama_reachable"] = True
+        for node, model in configured.items():
+            if model.startswith("ollama/"):
+                name = model.replace("ollama/", "")
+                present = name in available or f"{name}:latest" in available
+            else:
+                present = True  # non-ollama (e.g. claude) — assume external
+            status["models"][node] = {"model": model, "present": present}
+    except Exception as e:
+        status["error"] = str(e)
+        for node, model in configured.items():
+            status["models"][node] = {"model": model, "present": False}
+    return status
+
+
+@app.get("/api/health")
+async def api_health():
+    """Health check: Ollama reachability + model availability."""
+    return _health_status()
+
+
+@app.get("/health", response_class=HTMLResponse)
+async def health_page(request: Request):
+    if not _is_authenticated(request):
+        return RedirectResponse(url="/login", status_code=302)
+    status = _health_status()
+    return templates.TemplateResponse(request=request, name="health.html", context={"status": status})
+
+
 @app.get("/api/models")
 async def api_models():
     return cfg.list_models()
@@ -336,7 +405,7 @@ async def api_graph():
 
     lines = ["graph TD"]
     lines.append("    START([Start]) --> orchestrator")
-    workers = ["CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR"]
+    workers = ["CODER", "RESEARCHER", "FAST", "CODEX", "CLAUDE", "EXECUTOR", "CODEBASE"]
     for w in workers:
         lines.append(f"    orchestrator -->|route={w}| {w}")
         lines.append(f"    {w} --> orchestrator")
