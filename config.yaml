@@ -18,6 +18,7 @@ limits:
 
 executor:
   enabled: true
+  repair: true            # on persistent failure, ask CODER to fix + retry once
   timeout: 60
   blocked_patterns:
     - "rm -rf"

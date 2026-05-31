@@ -27,6 +27,7 @@ DESCRIPTIONS = {
     ("limits", "save_traces"): "Write replayable run traces to runs/ (--list-runs, --replay).",
     ("limits", "fanout_workers"): "Max concurrent workers for parallel fan-out tasks.",
     ("executor", "enabled"): "Allow the EXECUTOR node to run shell commands.",
+    ("executor", "repair"): "On persistent command failure, ask CODER to fix and retry once.",
     ("executor", "timeout"): "Per-command timeout in seconds.",
     ("executor", "blocked_patterns"): "Substrings that block a command from running.",
     ("researcher", "max_search_results"): "DuckDuckGo results fetched per query.",

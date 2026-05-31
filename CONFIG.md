@@ -33,6 +33,7 @@ Settings live in `config.yaml`. Secrets go in `.env`. Environment variables over
 | Key | Default | Description |
 |-----|---------|-------------|
 | `enabled` | `True` | Allow the EXECUTOR node to run shell commands. |
+| `repair` | `True` | On persistent command failure, ask CODER to fix and retry once. |
 | `timeout` | `60` | Per-command timeout in seconds. |
 | `blocked_patterns` | `8 items` | Substrings that block a command from running. |
 
