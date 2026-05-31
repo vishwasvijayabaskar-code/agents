@@ -1,6 +1,18 @@
-import os
 import re
 from pathlib import Path
+
+
+def _safe_target(output_dir: str, filename: str) -> Path | None:
+    """Resolve filename under output_dir, rejecting path traversal.
+    Returns a safe absolute Path inside output_dir, or None if the name
+    escapes the directory (e.g. ``../etc/passwd`` or an absolute path)."""
+    base = Path(output_dir).resolve()
+    candidate = (base / filename).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        return None  # escapes output_dir — reject
+    return candidate
 
 
 def _write_files(content: str, output_dir: str) -> list[str]:
@@ -15,8 +27,10 @@ def _write_files(content: str, output_dir: str) -> list[str]:
         for m in matches:
             filename = (m.group(1) or m.group(2)).strip()
             code = m.group(3)
-            path = os.path.join(output_dir, filename)
-            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            path = _safe_target(output_dir, filename)
+            if path is None:
+                continue  # skip path-traversal attempts
+            path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "w") as f:
                 f.write(code)
             written.append(filename)
@@ -39,8 +53,10 @@ def _write_files(content: str, output_dir: str) -> list[str]:
             if filename in seen:
                 continue
             seen.add(filename)
-            path = os.path.join(output_dir, filename)
-            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            path = _safe_target(output_dir, filename)
+            if path is None:
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "w") as f:
                 f.write(m.group(2))
             written.append(filename)
